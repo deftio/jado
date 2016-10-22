@@ -1,0 +1,262 @@
+<html> <!-- M A Chatterjee 2015 -->
+<head>
+<title>Jado Test Page</title>
+<script type="text/javascript" src="./lodash.min.js"></script>
+<script type="text/javascript" src="./jado.js"></script>
+</head>
+<body>
+<h4>Jado Test Cases</h4>
+<div id="testCases"></div>
+
+
+<h4>JSON</h4>
+<div id="json1"></div>
+
+<h4>Output</h4>
+<div id="target1"></div>
+<br>
+<h4>HTML</h4>
+<div id="raw"></div>
+<div id="raw2"></div>
+<script>
+
+    findPathDelim = function (src, matchTerms, caseSensitive) {
+        var res = [], m, r, srcx = JSON.stringify(src);
+        var c = (caseSensitive == false) ? 'i' : '';
+        if (jado.typeOf(matchTerms) == "regexp") { //make sure is valid regex
+            r = matchTerms;
+        }
+        else if (jado.typeOf(matchTerms) === "array") 
+        {
+            var msx = matchTerms.map(function(x){return x.replace("|","\\|");}).join("|");
+            r = new RegExp('\\b('+msx+')\\b', c+'g');
+        }
+        else if (jado.typeOf (matchTerms) === "string") 
+            r = new RegExp('\\b('+matchTerms.replace("|","\\|")+')\\b',c+'g');
+        else // don't know what this matchTerms expression is
+            return res;
+    
+        try {
+            if (r.global == false) {
+                var flags = r.ignoreCase ? 'i' : "";
+                flags = r.multiline ? (flags+'m') : flags;
+                r = new RegExp(r.source, flags +'g'); // /g must be set or exec loop will hang
+            }
+            while ((m = r.exec(srcx))!== null) {
+                res.push([srcx.substring(m["index"], r.lastIndex), m["index"]-1, r.lastIndex-1]);
+            }
+        }
+        catch (e) {
+            console.log ("jado.findPathDelim: bad regex",e);
+        }
+        return res;
+    }
+</script>
+
+<script>
+    
+    
+    x=jado.makeNode("div",{"id":"divx","style":"background-color:grey"},[jado.makeNode("span",{},"text in here!!!")]); 
+    console.log(x);   
+    y=jado.makeNode("p",{"class":"divy","style":"background-color:yellow"},"this is content y");
+    console.log(y);   
+    z=jado.makeNode("div",{"id":"ztest"},[x,y,function(){return " FUNC ME NOW!!";},jado.makeNode("span",{"color":"grey"},"this is a span"),"THis is a RAW String",jado.makeNode("span",{"color":"grey"},"this is 2 span"),x]);
+    console.log(z);   
+    
+    doc = jado.makeNode("div",{"class":"c1","style":"background-color:blue"},["this","is","<span syle='background-color:orange' >  more stuff</span>","not so easy to write"]);
+    document.getElementById("json1").innerHTML   = jado.prettyPrintJSON(jado.getkv(z));
+    document.getElementById("target1").innerHTML = jado.prettyPrintHTML(z);
+    document.getElementById("raw").innerHTML     = jado.emitHTMLStr(z);
+    document.getElementById("raw").innerHTML     = jado.emitHTMLStr(z);
+    
+    var arr  = new Uint8Array([21,31,49,34]);
+    var arr2 = new Uint16Array([3,21,31]);
+    var buf  = new ArrayBuffer(16);
+    var bufv = new Int16Array(buf);
+    
+    var j2html = function  (j) {
+        return jado.emitHTMLStr(jado.makeNode(j[0],j[1],j[2]));
+    }
+    
+    jado.setDebug(true);
+    console.log("JADO debug mode: " + jado.getDebug());
+    document.getElementById("raw2").innerHTML     = j2html(["div",{"onclick":"jado.dispatch(this,clickMeLog(2));"},"function click test area"]);
+    
+    var z2 = [2,3,3,[3,{"that\\":"that","this/":[234,23,53,23,'232']},4,5,[3,4,4,4,{"ww3/":"oerijgre"}]],4,3];
+    var pa = ['abc/','/','123','\\','wefwef\/','ero']
+    var pas = pa.map(function(x){return x.toString().replace("\\","\\\\").replace("/","\\/");});
+    function psplit(s) {
+        //todo check to make sure its a string or convert it to one,   Handle both [,,,,] and "/ / / " types
+        
+        
+    }
+    //if you pass i a fn it should call jado.dispatch (a new function), which calls the passed in function with the 'this' object from the dom
+    var clickMeLog = function (s){console.log(s); console.log("clickmelog");};
+    
+    //test cases todo:
+    //test each fn for empty [],{}, for singletons [x], [y], for embedded evaluated functions [function(){return 3+2}]
+    //
+    //jado m,mx, f,fx,r,rx test cases
+    //each row:
+    //function to test, [arguments],  expected result, notes_string, [array of optional tags]]
+    
+    //Spit out test stats at the end
+    jadoTestCases =  
+    [
+        //function2test     //input args as arrray                                                                  //expected output                              //notes               //array of tags
+        [jado.map        ,  [[23,53,23,764,23,6,32,0,7]           , function(x){return x*2;}                             ],     [46, 106, 46, 1528, 46, 12, 64, 0, 14]    ,"basic map test case",[]             ],
+        [jado.filter     ,  [[23,53,23,764,23,6,32,0,7]           , function(x){return x>9;}                             ],     [23, 53, 23, 764, 23, 32]                 ,"",[]],
+        [jado.reduce     ,  [[23,53,23,764,23,6,32,0,7]           , function(x,i){if(x>9) return x+i; return i}   , 0    ],     918                                       ,"",[]],
+        [jado.map        ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x){return x*2;}                             ],     {"01":24, "23": 46, "we":106, "xi":46}    ,"basic map test case",[]             ],
+        [jado.filter     ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x){return x>29;}                            ],     [23, 53, 23, 764, 23, 32]                 ,"",[]],
+        [jado.reduce     ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x,i){if(x>29) return x+i; return i}  , 0    ],     96                                        ,"",[]]
+    ];
+    
+    //===========================================================================
+    //===========================================================================
+    //===========================================================================
+    //begin test trivial test "framework"
+    testResults = {};        
+    function _unitTest_Init() {    
+        testResults = {  //remember this is Javascript and this result var is public and persistent
+            "total"       : 0,
+            "totalPassed" : 0,
+            "items"       :{} // index of test cases, by function name
+        };    
+    }
+    function _unitTest_runTest(func,funcNameForResultsStorage,args,expected,notes,tags) {
+               
+        var testItem =  (funcNameForResultsStorage in testResults.items) ? testResults.items[funcNameForResultsStorage] :  testResults.items[funcNameForResultsStorage]={"total" :0, "totalPassed":0, "tests":[]}
+        testResults.total +=1;
+        testItem.total+=1;
+        
+        var result = _unitTest_RunFunc(func,args); //run test
+        var passed = _.isEqual(result, expected);
+        if (passed) { // success
+            testResults.totalPassed +=1;
+            testItem.totalPassed +=1;
+        }
+        else { //fail logic in here
+        }
+        //store results here        
+        testItem.tests.push([funcNameForResultsStorage,args,expected,result,passed,notes,tags]);
+    }
+
+    //takes a function and a variable number of parameters passed as an array e.g. func + [par1, par2, par3] ==> func(par1,par2,par3)
+    function _unitTest_RunFunc(func,args) {
+        var _internalCall=function(){ console.log("aarf :: ",func.toString(),":",arguments); return func.apply(this, args);}
+        return _internalCall(args);
+    }
+
+    function _unitTest_getFunctionName(fun,nameSpaceAsString,nameSpaceAsObject) { // yeah.... tell me there is an easier way!
+        if (typeof nameSpaceAsString == "undefined") {
+            if (typeof window != "undefined")
+                nameSpaceAsString="window"; // in a browser
+            else
+                nameSpaceAsString="global"; // in nodejs
+        }
+        return Object.keys(eval(nameSpaceAsString)).filter(function(a){return eval(nameSpaceAsString+"."+a+".toString()")==fun.toString()}).map(function(a){return nameSpaceAsString+"."+ a;});
+    }
+
+    function _unitTest_runTests(testCasesArray) {        
+        //run test cases: could use jado.map or array.map  :) but left as loop here for viewability...
+        for (i=0; i<testCasesArray.length; i++) {
+            console.log("test case: ",i);
+            _unitTest_runTest(testCasesArray[i][0],_unitTest_getFunctionName(testCasesArray[i][0],"jado")[0],testCasesArray[i][1],testCasesArray[i][2],testCasesArray[i][3],testCasesArray[i][4]);
+        }
+     }
+    
+    _unitTest_Init();
+    _unitTest_runTests(jadoTestCases);
+        
+    testOutHTML ="";
+    function makeTableHTML(myArray) {
+        var result = "<table style='border:1px solid black; border-collapse:collapse; width:100%'>";
+        w =( myArray[0].length > 0 ? Math.round(100/ myArray[0].length):100)+"%" ;
+        console.log (w);
+        for(var i=0; i<myArray.length; i++) {
+            result += "<tr  style='border:1px solid black;' >";
+            for(var j=0; j<myArray[i].length; j++){
+                result += "<td  style='border:1px solid black; width: "+ w+ " '>"+myArray[i][j]+"</td>";
+            }
+            result += "</tr>";
+        }
+        result += "</table>";
+    
+        return result;
+    }
+    function nicePrint(title,total,passed,cases) {
+    console.log("NP",title,total,passed,cases);
+        var s="";
+        s+= "<h4>"+title+"</h4>";
+        s+= "Total Cases    :"+total+"<br/>";
+        s+= "Passed         :"+passed+"<br/>";
+        s+= "Percent Correct:";
+        s+= (total > 0) ? Math.round(10000*passed/total)/100: " --- ";
+        s+= "<br />";
+        var c = _.clone(cases, true);//
+        c.unshift(["Name","args","expected","actual","pass","notes","tags"])
+        _.map(c,function(a){return ""+JSON.stringify(a);})
+        s+= makeTableHTML(c);
+        //console.log("+++++++++++++++++++++",cases);
+        return s;
+    }
+    
+    testOutHTML = _.reduce(testResults.items,function(i,v,k){ i+=nicePrint(k,v.total,v.totalPassed,v.tests); return i;},"");
+    
+    document.getElementById("testCases").innerHTML = testOutHTML;
+    
+    
+   
+    
+    function sum () {var s=0; for(i=0; i<arguments.length; i++) {s+=arguments[i]}; return s; }
+    za = [23,53,23,764,23,6,32,0,7];  
+    zd = {"01":12, "23":43,"we":53,"xi":23};
+    /*
+    //array  //test cases need to include [], [1], [f(){}]  <-- empty, 1 member, function as member
+    za = [23,53,23,764,23,6,32,0,7];     
+    console.log("array",za);
+    console.log("m  ",jado._m(za,function(x){return x*2;}) );
+    console.log("f  ",jado._f(za,function(x){return x>9;}) );
+    console.log("r  ",jado._r(za,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("rx ",jado._rx(za,function(k,v,i){i[v]=k;return i;},{})); //example reverse maps an array
+    
+    
+    //dict  (test cases need to include {} and { f(){} : f(){} } e.g. key or value can be a function
+    zd = {"01":12, "23":43,"we":53,"xi":23};
+    console.log("dict",zd);
+    console.log("m  ",jado._m(zd,function(x){return x+'tada ';}) );
+    console.log("f  ",jado._f(zd,function(x){return x>29;}) );
+    console.log("r  ",jado._r(zd,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("rx ",jado._rx(zd,function(k,v,i){i[v]=k;return i;},{})); //example reverse maps a dict
+    
+    //string (test cases need to include "", "1"  <-- zero char and 1 char strings, also ' ' vs  " " just to make we don't have something weird going on
+    zs = "this is a string to test r rx m mx f rx on.  I am trying to use a string of enough lenght so that we can use it for test cases such as ";
+    console.log("string",zs);
+    console.log("m  ",jado._m(zs,function(x){return x.toUpperCase();}) );
+    console.log("f  ",jado._f(zs,function(x){return x.toUpperCase();}) );
+    console.log("r  ",jado._r(zs,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("rx ",jado._rx(jado.s2a(zs),function(k,x,i){i[x]=k;return i;},{})); //example reverse maps a dict
+    */
+    
+    //TODO:
+    //histogram counts for array, string, dict-values
+    //tokenize -- use that smart white-space reducing tokenizer played with earlier.  then tokenize --> histogram
+    //tokenize by sentence
+    
+    //generate templates for sections, header, footer, pagination rules, "live data" callbacks 
+    //testReport.generateIndex();
+    //title section    
+    //legal section    
+    //section1
+    //section1.1
+    //section2
+    //section3
+    //glossary
+    //testReport.render();
+    
+</script>
+
+</body>
+</html>
+

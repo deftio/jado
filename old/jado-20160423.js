@@ -114,10 +114,6 @@ jado.reduce    = function (d,f,i)   {var k, r=i;  if(_il(_v(d))) for (k in d) {r
 // requires requires f to take 3 params: for arrays f(index,value,aggregation), for  dicts f(key,value,aggregation)
 jado.reducex   = function (d,f,i)   {var k, r=i;  if(_il(_v(d))) for (k in d) {r = f(k,d[k],r);} else {r = f(d,r);} return r;}; 
 
-//object to array --> useful for converting dictionaries to arrays of k/v pairs --> {1:'a',2,:'2'} --> [[1,'a'],[2,'2']]
-//used internally for some operations
-jado.o2a       = function (d)       {return (_il(d)) ? _rx(d,function(k,v,i){i.push([k,v]); return i;},[]): [0,d]}
-
 // Jado internal helpers continued -- typeOf, cloneType, deepClone 
 // clones an empty type of same type as x.  only use for core types
 //jado.cloneType = function (x)       {var r = {"string":"","number":0,"object":{},"array":[], "function":function (x){return x;}, "date": new Date() }; return r[_to(x)];};
@@ -201,7 +197,6 @@ var _r         = jado._r  = jado.reduce;       //reduce
 var _rx        = jado._rx = jado.reducex;      //reduce with key, value
 var _m         = jado._m  = jado.map;          //map
 var _mx        = jado._mx = jado.mapx;         //map with key, value
-var _o2a                  = jado.o2a;          //object to array of [[k,v],...]
 var _dc        = jado._dc = jado.deepClone;    //deep clone the value of an object
 var _ct        = jado._ct = jado.cloneType;    //clone an empty type of the same type of object (works only for primitive objects eg not deep)
 var _to        = jado._to = jado.typeOf;       //typeOf but produces useful output for sub types e.g. not just "object" for everything
@@ -214,13 +209,13 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 jado.version  = function() {
     return {
             'version'   : "1.0.0", 
-            'about'     : "Jado is a simple library operations where any variable can be treated as a list.", 
+            'about'     : "Jado is a simple library for functional Javascript operations on lists and objects.", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software. 	Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions: \n  1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation is required. \n  2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software. \n 3. This notice may not be removed or altered from any source distribution."};
 }
     
 
-/* jado.cset()  -- "counting" set
+/* jado.set()
  A simple implementation of "set" used for ref counts, explosed externally as well.  
  Used internally in those functions that need circular reference counts (e.g. deep fns) 
  In general its a simple histogram counter.
@@ -229,7 +224,7 @@ jado.version  = function() {
     e.g. add([,,,,]) or del([,,,] or cnt([,,,] or get ([,,,])
     
  example usage:
- var mySet = new jado.cset()
+ var mySet = new jado.set()
  mySet.add("key");  // adds key to set, sets reference count to 1 returns 1
  mySet.add("key");  // since already in set, increases ref count to 2
  mySet.add("key");  // since already in set, increases ref count to 3
@@ -248,48 +243,25 @@ jado.version  = function() {
  mySet.get(3)       // returns key-count --> {3:1}
  mySet.get([6,3])   // returns key-count --> {3:1,6:0}  //6 isn't in set so zero 
  */
-jado.cset  =  function() {
+jado.set  =  function() {
     var c = {}; // closure for counts
-    var  uniq    = function(x) {return Object.keys(_r(x,function(z,i){i[z]=1; return i;},{}));} //returns uniq keys in x
-    //var  uniq    = function (x){return x.filter (function (v, i, arr) {return (arr.indexOf(v)==i);});};
+    var  uniq    = function(x) {return Object.keys(_r(x,function(z,i){i[z]=1; return i;},{}));} //returns uniq keys in x    
     //these commented out versions are atomic-only and don't accept [] or {} as params
     //this.add = function(x) {c[x]=(x in c) ? c[x]+1 : 1; return c[x];} 
     //this.cnt = function(x) {return (x in c) ? c[x]:0;}                
     //this.del = function(x) {if (x in c) delete c[x]; return 0;}
-    //this.dec     = function(x) {if (x in c) {c[x]-=1; if(c[x]<=0) this.del(x);} return this.cnt(x);}    
-    this.add     = function(x) {_r(x,function(z,i){i[z]=(z in i) ? i[z]+1:1; return i;},c); return cnt(x);}
-    this.dec     = function(x) {_m(uniq(x),function(z){if (z in c){c[z]-=1; if (c[z]<=0){delete c[z]}}}); return cnt(x)}
+    //this.dec     = function(x) {if (x in c) {c[x]-=1; if(c[x]<=0) this.del(x);} return this.cnt(x);}
+    
+    this.add     = function(x) {_r(x,function(z,i){i[z]=(z in i) ? i[z]+1 : 1; return i;},c); return this.cnt(x);}
+    this.dec     = function(x) {_m(uniq(x),function(z){if (z in c){c[z]-=1; if (c[z]<=0){delete c[z]}}}); return this.cnt(x)}
     this.del     = function(x) {_m(uniq(x),function(z){if (z in c) delete c[z]}); return 0;}
     this.cnt     = function(x) {return _r(uniq(x),function(z,i){return (z in c)?c[z]+i:i},0)}; //returns count of key or keys if iteratable
-    this.cntk    = function()  {return Object.keys(c).length;} //total # distinct keys stored
+    this.cntKeys = function()  {return Object.keys(c).length;} //total distinct keys stored
     this.ttl     = function()  {return _r(c,function(x,i){i+=x; return i;},0)}; //total counts of all keys counted
     this.all     = function()  {return c;}
-    this.clr     = function()  {c={}; return cnt();}
+    this.clr     = function()  {c={}; return this.cnt();}
     this.keys    = function()  {return Object.keys(c);} //just an array of the keys
-    this.get     = function(x) {var r={},i,u=uniq(x); for (i=0;i< u.length;i++) r[u[i]]=cnt(u[i]); return r;}
-    this.set     = function(x) {if (_to(x) == "object"){for (i in x){c[i]=x[i]}} return cnt(x);}; //directly set the count(s) for the given x of x's if array
-    this.avg     = function()  {var a; return (cntk()<1)? a: this.ttl()/cntk();}
-    this.min     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(0,y)}
-    this.max     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(r.length-y)}
-    this.med     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1,l=r.length; r.sort(sf); return ((l&0x1)==1)?r[l/2-0.5]:[r[l/2-1],r[l/2]];}
-    this.vari    = function()  {var a=this.avg(); return _to(a)=="number" ?  _r(c,function(j,i){i+= (j-a)*(j-a); return i;},0)/this.cntk():a;}
-    this.std     = function()  {var v = this.vari(); return (_to(v)=="number")?Math.sqrt(v):v;}
-    this.clone   = function()  {var x = new jado.cset();  x.set(c); return x;} //creates duplicate
-    this.ap2o    = function(p) {return _rx(p,function(k,v,i){i[k]=v; return i;},{});} //convert array pair list to object
-    this.type    = "jado.cset"; //static type indentifier
-    this.x2o     = function(x) {} //converts any obj to an 
-    var cnt      = this.cnt;
-    var cntk     = this.cntk;
-    var sf       = function(a,b){return a[1]-b[1];} // used for sorts on counts
-    this.u = uniq;
-    init = arguments[0];
-    if (typeof init != "undefined") {
-        if (init.type == "jado.cset")
-            {this.set(init.all()); console.log(init)}
-        else
-            this.add(init);
-    }
-    return this ;  
+    this.get     = function(x) {var r={},i,u=uniq(x); for (i=0;i< u.length;i++) r[u[i]]=this.cnt(u[i]); return r;}
 }
 /***********************
  * begin path operations 
@@ -417,8 +389,6 @@ jado.pathNorm   = function(p,delim,esc) { var t = _to(p); return _ch(t,{"array":
  also
     typeof jado.p2v([2,4],"55") == "undefined"   //this is a true statement
    
- TODO: add default return value if object not found, like _ch
- p2v(obj,path,default) --> if obj[path] == 'undefined' --> return default
  */
 
 jado.p2v        = function(d,p,delim,esc) {
@@ -515,7 +485,6 @@ jado.checkNodeForm = function (obj) {
 }
 
 //check if a dictionary is suitable for a node object's attributes
-//note needs to be isAttrDictHTML  as to disingguish from CSS  eg isAttrDictCSS
 jado.isAttrDict = function (d) {
     if (_to(d) == "object") {
         for (var a in d) { //could use _rx() and make this a one liner, but loop allows simple early break out

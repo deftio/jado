@@ -1,6 +1,12 @@
 <html> <!-- M A Chatterjee 2015 -->
 <head>
 <title>Jado Test Page</title>
+
+<!-- silly jet icon -->
+<!-- <link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32" /> --> 
+<link rel="icon" type="image/png" href="favicon-16x16.png" sizes="16x16" /> 
+<!-- end silly jet icon -->
+
 <script type="text/javascript" src="./lodash.min.js"></script>
 <script type="text/javascript" src="./jado.js"></script>
 </head>
@@ -18,44 +24,10 @@
 <h4>HTML</h4>
 <div id="raw"></div>
 <div id="raw2"></div>
-<script>
 
-    findPathDelim = function (src, matchTerms, caseSensitive) {
-        var res = [], m, r, srcx = JSON.stringify(src);
-        var c = (caseSensitive == false) ? 'i' : '';
-        if (jado.typeOf(matchTerms) == "regexp") { //make sure is valid regex
-            r = matchTerms;
-        }
-        else if (jado.typeOf(matchTerms) === "array") 
-        {
-            var msx = matchTerms.map(function(x){return x.replace("|","\\|");}).join("|");
-            r = new RegExp('\\b('+msx+')\\b', c+'g');
-        }
-        else if (jado.typeOf (matchTerms) === "string") 
-            r = new RegExp('\\b('+matchTerms.replace("|","\\|")+')\\b',c+'g');
-        else // don't know what this matchTerms expression is
-            return res;
-    
-        try {
-            if (r.global == false) {
-                var flags = r.ignoreCase ? 'i' : "";
-                flags = r.multiline ? (flags+'m') : flags;
-                r = new RegExp(r.source, flags +'g'); // /g must be set or exec loop will hang
-            }
-            while ((m = r.exec(srcx))!== null) {
-                res.push([srcx.substring(m["index"], r.lastIndex), m["index"]-1, r.lastIndex-1]);
-            }
-        }
-        catch (e) {
-            console.log ("jado.findPathDelim: bad regex",e);
-        }
-        return res;
-    }
-</script>
 
 <script>
-    
-    
+   
     x=jado.makeNode("div",{"id":"divx","style":"background-color:grey"},[jado.makeNode("span",{},"text in here!!!")]); 
     console.log(x);   
     y=jado.makeNode("p",{"class":"divy","style":"background-color:yellow"},"this is content y");
@@ -78,28 +50,36 @@
         return jado.emitHTMLStr(jado.makeNode(j[0],j[1],j[2]));
     }
     
-    jado.setDebug(true);
-    console.log("JADO debug mode: " + jado.getDebug());
+    jado.setLogEnable(true);
+    console.log("JADO debug mode: " + jado.getLogEnable());
     document.getElementById("raw2").innerHTML     = j2html(["div",{"onclick":"jado.dispatch(this,clickMeLog(2));"},"function click test area"]);
     
+    
+    
+    
+    
     var z2 = [2,3,3,[3,{"that\\":"that","this/":[234,23,53,23,'232']},4,5,[3,4,4,4,{"ww3/":"oerijgre"}]],4,3];
-    var pa = ['abc/','/','123','\\','wefwef\/','ero']
-    var pas = pa.map(function(x){return x.toString().replace("\\","\\\\").replace("/","\\/");});
-    function psplit(s) {
-        //todo check to make sure its a string or convert it to one,   Handle both [,,,,] and "/ / / " types
-        
-        
+    var pa = ['abc/','/','123','\\','wefwef\\/','ero'];
+    var pas = jado.pathToStr(pa);
+    
+    uq = function(a){
+        a.sort(); b=[];
+        for (var i=1; i<a.length; i++) {
+            if (a[i] != a[i-1]) b.push(a[i]);
+        }
+        return b;
     }
     //if you pass i a fn it should call jado.dispatch (a new function), which calls the passed in function with the 'this' object from the dom
     var clickMeLog = function (s){console.log(s); console.log("clickmelog");};
+    
     
     //test cases todo:
     //test each fn for empty [],{}, for singletons [x], [y], for embedded evaluated functions [function(){return 3+2}]
     //
     //jado m,mx, f,fx,r,rx test cases
     //each row:
-    //function to test, [arguments],  expected result, notes_string, [array of optional tags]]
-    
+    //[function_to_test, [arguments],  expected result, notes_string, [array of optional tags]]
+    // note: need deep equality by value to compare results.  Need note on that
     //Spit out test stats at the end
     jadoTestCases =  
     [

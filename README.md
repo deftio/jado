@@ -19,7 +19,7 @@ npm install jado --save
 ## Usage
 jado can be used in a browser or nodejs (server) with no dependancies.   
 
-### Browser: Including frabjous mix in the browser:
+### Browser: Including jado in the browser:
 In a browser just include script tags:
 ```
 <script type="text/javascript" src="./jado.min.js"></script>
@@ -27,7 +27,7 @@ In a browser just include script tags:
 
 ### In nodejs 
 ```
-var frabjousmix = require('./jado.js')["jado"];  //adds to current scope
+var jado = require('./jado.js')["jado"];  //adds to current scope
 ```
 
 ### Simple Code Example (same usage in either browser or nodejs)
@@ -40,14 +40,41 @@ More examples in the examples folder
 all source is at github:
 http://github.com/deftio/jado
 
-docs and other projects at 
-http://deftio.com/open-source
+Web url and examples
+http://deftio.com/jado
 
-## Tests  (requires mocha and chai test suites)
-npm test
+
+## Linting 
+jado uses eslint for static code checking and analysis.
+
+```
+npm install eslint --save-dev
+
+./node_modules/.bin/eslint --init
+
+```
+Now run the lint test like this:
+```
+./node_modules/.bin/eslint jado.js   
+```
+
+## Tests  (requires mocha and chai test suites)  
+jado is tested with the mocha framework installed locally using npm
+
+```
+npm install mocha --save-dev mocha
+
+```
+
+Run the tests as follows:
+```
+./node_modules/mocha/bin/mocha test/jado_test.js --reporter spec
+
+```
+
 
 ## Release History
-* 0.1.0 Initial release
+* 1.0.x Initial release
 
 ## License
 

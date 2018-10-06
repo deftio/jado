@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<link rel="icon" type="image/x-icon" href="./favicon.ico" />
+
+<title>JADO</title>
+<!-- 
+	jado.js intro page
+	(c) M A Chatterjee 2012-2018 	deftio<at>deftio<dot>com
+	github:  https:github.com/deftio/jado
+	web:     https:deftio.com/jado
+ -->
+<script type="text/javascript" src="./jado.js" ></script>
+<script type="text/javascript" src="./web/bitwrench.js" ></script>  <!-- web page formatting utils -->
+</head>
+<body class="bw-def-page-setup bw-font-sans-serif">
+<div  class="bw-container">
+	<div class="bw-col-12">
+		<a href="http://www.deftio.com/jado"><img src="./favicon.ico" width="50px" alt="jado.js"></img></a>
+		<h1>Intro</h1>
+		<p id="versionArea"></p>
+		<br>
+		Jado is a javascript library which makes all objects iterables.  In this way one can generically traverse (even recusrively) complex objects or arrays even if specific elements are singletons such as Numbers, Dates, or other objects.<br>
+		<h2>Features</h2>
+		<h3>Jado functions:</h3>
+		&#8226; map / filter / reduce applied to any object    <br> 
+		&#8226; a better typeof operator   <br>
+		&#8226; pretty printing json       <br>
+		&#8226; counting data set (CSET) - sub object which provides descriptive stats on collections <br>
+		<br><br>Jado has no dependancies can be used along side any other framework.
+		<br><br>
+		<br><br>
+		<div class="bw-center" style="font-size: 9pt">jado.js&nbsp;&nbsp;&copy&nbsp;2012-<span id="cdate"></span>&nbsp; M A Chatterjee</div><br>	
+	</div>
+</div>
+<script type="text/javascript">
+	document.getElementById("versionArea").innerHTML = "<strong>jado.js version:</strong> " + jado.version()["version"];
+	document.getElementById("cdate").innerHTML = (new Date()).getFullYear();
+</script>
+
+</body>
+</html>

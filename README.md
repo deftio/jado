@@ -1,3 +1,6 @@
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
+![NPM version](http://img.shields.io/npm/v/jado.svg?style=flat-square)
+
 # jado - a javascript data objects library
 
 copyright (C) <2012>  <M. A. Chatterjee>  <deftio [at] deftio [dot] com>
@@ -5,11 +8,11 @@ version 0.23 M. A. Chatterjee
  
 ## About Jado
 
-Jado is a small library for treating all javascript objects as iterables.  This allows generic operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
+Jado is a small library for treating all javascript objects as iterables.  This allows generic (iterated) operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
 
 ## Features
 
-* works in both server side (node_js and browser) and provide in both source and minified forms
+* works in both server side (node_js and browser) and provided in both source and minified forms
 * no dependancies on any other libraries
 * OSI approved open-source.  
 

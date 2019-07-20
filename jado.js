@@ -1,11 +1,9 @@
 /*
- *  jado.js  --- Jado Aggregated Data Operations
+ *  jado.js  --- Jado Array Data Operations
  *	
- *  A Simple Standalone Javascript Data Ops library that treats any object as iterable lists (including atomics)
+ *  A Simple Standalone Javascript Data Ops library that treats any object as iterable lists (including objects, and atomics)
  *  
  *  Usage:
- *  Create a <div id='myreport'> element in which to host a jado document
- *  The in javascript
  *
  *
  *  M. A. Chatterjee 2014-2018
@@ -39,35 +37,16 @@
 //usage in nodejs
 //var jado = require('./jado.js')["jado"];  //adds to current scope
 
-/*JADO ->  Jado Aggregated Data Output  - or is that
+/*JADO ->  Jado Array Data Operations  - or is that
            Jado Assisted Data Oddities  
   who knows..   really I was just looking for a punny recursive name :)  
   which sounds like JATO and to say I wrote a mini lib with a recursive acronym. 
 
 Usage and Purpose:
-Document Object Model (DOM) for JADO mirrors HTML / XML tree structure    
-<tagname attrib1 = "value1" attrib2 = "value2">content_array[  ]</tag>
+    JADO allows any object to be interated on or have values applied to it.  In this way one can apply map/filter/reduce/each to any object generically.
 
-{ _t: "tag",
-  _a: {"attrib1" : "value1", "attrib2" : "value2" }.
-  _c: "content" or [array of tag nodes] //string for content or array of these types of nodes
-}
-
-universal bulky internal decoding but allows injection w/o special parseing eg without {} or _foo
-if HTML output then can force all attribs and value to be strings as 'grammar' check
-{ "tagtype" : "div",  //string -- node type
-   "attrib" : { "attrib1"  : "value1"},   //dictionary of attributes
-   "content": []                          //array of objects of this type. if empty set to ""
-}
-
-A (HTML DOM) document consists of an array of such tag objects e.g. doc = [ , , , , , ]
-can abbreviate each item as t, a, c
-dom IDs etc are just attibutes
-templatable params are just functions()
-can output this "DOM" to HTML or PDF or ... since form is preserved.
-can be encoded as JSON (even functions using toString and )
-
-
+    JADO also includes a sub oject called cset (jado.cset) which is useful for providing many descriptive stats such as counting frequency of
+    objects or keys along with simple stats such as mean/std-dev/variance/modes etc.
 */
 
 //begin Code
@@ -77,7 +56,9 @@ can be encoded as JSON (even functions using toString and )
 var _log= false;
 jado.setLogEnable= function(v)   { _log = (v==true) ? true:false; return _log;}
 jado.getLogEnable= function()    { return _log; }
+
 //jado.log         = function()    { if(_log) console.log(Array.prototype.slice.call(arguments, 0).join(','))}; //defaults to console, can be redirected
+
 jado.log         = function()    { if(_log) console.log(arguments)}; //defaults to console, can be redirected
 
 //set a different log output function (default is console.log)
@@ -178,7 +159,46 @@ jado.lend      = function (x,c)     {var cc=(c==true)?1:0; var f=function(a,i){r
 
 //A useable typeof operator.  See this fantastic reference: 
 //https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
-jado.typeOf    = function (x)       {return (typeof x == "undefined") ? "undefined" : (({}).toString.call(x).match(/\s([a-zA-Z]+)/)[1].toLowerCase());}
+jado.typeOf    = function (x, baseTypeOnly)       {
+/** 
+bw.typeOf(x, baseTypeOnly) returns a useful typeOf the object.
+
+bw.typeOf(2) // "number"
+bw.typeof( function(){}) // "function"
+
+function Car(make, model, year) {
+    this.make = make;
+    this.model = model;
+    this.year = year;
+}
+
+x = new Car("Ford", "Escape", 2009);
+
+bw.typeOf(Car)      // "function"
+bw.typeOf(x)        // "Car"        ---> returns correct object type
+bw.typeOf(x,true)   // "object"     ---> returns base object type 
+
+ */
+
+//A useable typeof operator.  See this fantastic reference for a starter 
+//https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+
+    if (x === null)
+        return "null";
+
+    var y = (typeof x == "undefined") ? "undefined" : (({}).toString.call(x).match(/\s([a-zA-Z]+)/)[1].toLocaleLowerCase()) 
+    if ((y != "object") && (y != "function"))
+        return y;
+    if (baseTypeOnly == true) // so if undefind or anything but true
+       return y; 
+
+    var r = y;
+    try {
+        r =  (x.constructor.name.toLocaleLowerCase() == y.toLocaleLowerCase()) ?  y : x.constructor.name;  // return object's name e.g.
+    }
+    catch (e) {};
+    return r;
+};
 
 //applyd a function to every item in an object or array (including deep leaf nodes). **Modifies** the passed object e.g. d=jado.apply(d,function(x){return "touched:"+x});
 jado.applyd    = function (d,f)     {var _f = function(a,fa){ var i; if(_il(a)) {for (i in a){ a[i]=_f(a[i],fa);} return a;} return fa(a);};  return _f(d,f);}
@@ -213,7 +233,7 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.1", 
+            'version'   : "1.0.2", 
             'about'     : "Jado is a simple library operations where any variable can be treated as a list.", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software. 	Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions: \n  1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation is required. \n  2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software. \n 3. This notice may not be removed or altered from any source distribution."};

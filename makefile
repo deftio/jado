@@ -1,4 +1,4 @@
-#bitwrench makefile (c) 2012 M A Chatterjee
+# makefile (c) 2012 M A Chatterjee
 #remember makefiles require real tabs not spaces
 
 build:

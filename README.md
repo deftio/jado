@@ -4,7 +4,7 @@
 # jado - a javascript data objects library
 
 copyright (C) <2012>  <M. A. Chatterjee>  <deftio [at] deftio [dot] com>
-version 0.23 M. A. Chatterjee
+version 1.02  M. A. Chatterjee
  
 ## About Jado
 

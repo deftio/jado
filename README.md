@@ -24,22 +24,22 @@ jado can be used in a browser or nodejs (server) with no dependancies.
 
 ### Browser: Including jado in the browser:
 In a browser just include script tags:
-```
+
+```html
 <script type="text/javascript" src="./jado.min.js"></script>
 ```
 
 ### In nodejs 
-```
+```javascript
 var jado = require('./jado.js')["jado"];  //adds to current scope
 ```
 
 ### Simple Code Example (same usage in either browser or nodejs)
 
 More examples in the examples folder
-```
-```
 
-#Source code home
+
+# Source code home
 all source is at github:
 http://github.com/deftio/jado
 
@@ -50,27 +50,27 @@ http://deftio.com/jado
 ## Linting 
 jado uses eslint for static code checking and analysis.
 
-```
+```bash
 npm install eslint --save-dev
 
 ./node_modules/.bin/eslint --init
 
 ```
 Now run the lint test like this:
-```
+```bash
 ./node_modules/.bin/eslint jado.js   
 ```
 
 ## Tests  (requires mocha and chai test suites)  
 jado is tested with the mocha framework installed locally using npm
 
-```
+```bash
 npm install mocha --save-dev mocha
 
 ```
 
 Run the tests as follows:
-```
+```bash
 ./node_modules/mocha/bin/mocha test/jado_test.js --reporter spec
 
 ```

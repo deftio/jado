@@ -1,5 +1,6 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
-![NPM version](http://img.shields.io/npm/v/jado.svg?style=flat-square)
+![NPM version](https://img.shields.io/npm/v/jado.svg?style=flat-square)
+
 
 # jado - a javascript data objects library
 

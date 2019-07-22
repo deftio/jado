@@ -100,23 +100,54 @@
     }
     if (!fn.map) fn.map=function(f){var r=[];for(var i=0;i<this.length;i++)r.push(f(this[i]));return r;};
     if (!fn.filter) fn.filter=function(f){var r=[];for(var i=0;i<this.length;i++)if(f(this[i]))r.push(this[i]);return r;};
+    if (!String.prototype.trim) {String.prototype.trim = function () {  return this.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, ''); };}
+
 })(Array.prototype);
 // * /
 
-(function(bw){
+(function (root, factory) {
+    if (typeof define === "function" && define.amd) { // eslint-disable-line no-undef
+        // AMD. Register as an anonymous module.
+        //define(['myRequiredDependancyModule'], factory); // use this if other modules required
+        define([], factory); // eslint-disable-line no-undef
+    } else if (typeof module === "object" && module.exports) {
+        // Node. Does not work with strict CommonJS, but
+        // only CommonJS-like environments that support module.exports,
+        // like Node.
+        
+        //module.exports = factory(require('myRequiredDependancyModule'));  // use this if other modules required
+        module.exports = factory();
+    } else {
+        // Browser globals (root is window)
+        var module = factory(); // factory(root.myRequiredDependancyModule);  // use this if other modules required
+        root[module["exportName"]] = module;
+    }
+}(typeof self !== "undefined" ? self : this, function () { // note if needing requirements use ... (typeof self !== "undefined" ? self : this, function (myRequiredDependancyModule) 
+    // Use b in some fashion.
+
+    // Just return a value to define the module export.
+    // This example returns an object, but the module
+    // can return a function as the exported value.
+    var bw = {};
+    bw.exportName = "bw"; // 
+//(function(bw){ old way
 
 "use strict";
+
+//deprated attributes / names
+bw.depAttr = [];
 
 // ===================================================================================
 bw.choice    = function (x,choices,def) { 
 /** 
 bw.choice(x,choices-dictionary, default) 
+
 Allows a dictionary to be used as a switch statement, including functions.
 
-colors = {"red": 1, "blue": 2};
-bw.choice("red",colors,"0")   ==> "1"
-bw.choice("shiny",colors,"0") ==> "0"
-
+example:
+    colors = {"red": 1, "blue": 2};
+    bw.choice("red",colors,"0")   ==> "1"
+    bw.choice("shiny",colors,"0") ==> "0"
  */
     return (x in choices) ? choices[x] : def;
 };   
@@ -126,6 +157,7 @@ bw.choice("shiny",colors,"0") ==> "0"
 bw.jsonClone = function (x)       {
 /** 
 bw.jsonClone(object)
+
 crude deep copy by value of an object as long as no js dates or functions
  */
     return JSON.decode(JSON.encode(x));
@@ -133,20 +165,49 @@ crude deep copy by value of an object as long as no js dates or functions
 
 
 // ===================================================================================
-bw.typeOf    = function (x)       {
+bw.typeOf    = function (x, baseTypeOnly)       {
 /** 
-bw.typeOf(obj)
+bw.typeOf(x, baseTypeOnly) returns a useful typeOf the object.
 
-A useable typeof operator.  See this fantastic reference: 
-https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+bw.typeOf(2) // "number"
+bw.typeof( function(){}) // "function"
+
+function Car(make, model, year) {
+    this.make = make;
+    this.model = model;
+    this.year = year;
+}
+
+x = new Car("Ford", "Escape", 2009);
+
+bw.typeOf(Car)      // "function"
+bw.typeOf(x)        // "Car"        ---> returns correct object type
+bw.typeOf(x,true)   // "object"     ---> returns base object type 
+
  */
+
+//A useable typeof operator.  See this fantastic reference for a starter 
+//https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
+
     if (x === null)
         return "null";
 
-    return (typeof x == "undefined") ? "undefined" : (({}).toString.call(x).match(/\s([a-zA-Z]+)/)[1].toLowerCase());
+    var y = (typeof x == "undefined") ? "undefined" : (({}).toString.call(x).match(/\s([a-zA-Z]+)/)[1].toLocaleLowerCase()) 
+    if ((y != "object") && (y != "function"))
+        return y;
+    if (baseTypeOnly == true) // so if undefind or anything but true
+       return y; 
+
+    var r = y;
+    try {
+        r =  (x.constructor.name.toLocaleLowerCase() == y.toLocaleLowerCase()) ?  y : x.constructor.name;  // return object's name e.g.
+    }
+    catch (e) {};
+    return r;
 };
 
-var _to  = bw.typeOf;
+var _to = bw.typeOf;
+bw.to   = bw.typeOf;
 //===============================================
 // internally used type check and assign function
 bw.typeAssign = function (a, typeString, trueValue, falseValue) {
@@ -161,15 +222,45 @@ bw.typeAssign([23],"number","is a number!", "not a number!") ==> "not a number!"
 can also supply list of types
 bw.typeAssign(23,["string","number"], "string or num", "something else") ==> "string or num"
 bw.typeAssign(true,["string","number"], "string or num", "something else") ==> "something else"
-
  */
     if (_to(typeString) == "string")
         typeString = [typeString];
+    
     return (typeString.indexOf(bw.typeOf(a)) >= 0) ? trueValue : falseValue;
 };
 
-var _toa = bw.typeAssign;  // eslint-disable-line no-unused-vars
+var _toa = bw.typeAssign;
+bw.toa   = bw.typeAssign;  // eslint-disable-line no-unused-vars
 
+
+//===============================================
+// internally used type check and assign function with functional support (trueValue or falseValue can be functions which are passed the param a)
+
+bw.typeConvert = function (a, typeString, trueValue, falseValue) {
+/**
+bw.typeConvert(variable, typeString, trueValue, falseValue) 
+typeConvert is used to see if the argument a is of type typeString as defined by bw.typeOf().
+if it is then trueValue is returned else falseValue.
+
+bw.typeConvert("23","number","is a number!", "not a number!") ==> "is a number!"
+bw.typeConvert([23],"number","is a number!", "not a number!") ==> "not a number!" // is an array of length 1
+
+can also supply list of types
+bw.typeConvert(23,["string","number"], "string or num", "something else") ==> "string or num"
+bw.typeConvert(true,["string","number"], "string or num", "something else") ==> "something else"
+
+however typeConvert also allows functions (as apposed to typeAssign)
+*/
+    if (_to(typeString) == "string")
+        typeString = [typeString];
+      
+    trueValue  = _to(trueValue)  == "function" ? function(a){return trueValue(a) } : trueValue;
+    falseValue = _to(falseValue) == "function" ? function(a){return falseValue(a)} : falseValue;
+
+    return (typeString.indexOf(bw.typeOf(a)) >= 0) ? trueValue : falseValue;
+}
+var   _tc = bw.typeConvert;
+bw.tc = bw.typeConvert;
 //===============================================
 // internally used function for options copy
 var optsCopy = function(dopts,opts) {
@@ -180,14 +271,38 @@ var optsCopy = function(dopts,opts) {
     }
     return dopts;
 };
+// ===================================================================================
 
+bw.arrayUniq =  function (x){
+/** 
+    arrayUniq(x)
+    returns uniq elements of simple array x.
+*/    
+    if (_to(x) != "array")
+        return [];
+    return x.filter (function (v, i, arr) {return (arr.indexOf(v)==i);});
+};
+// ===================================================================================
+bw.arrayBinA = function (a,b) {
+/** 
+    arrayBinA(x)
+    returns intersection elements of to simple arrays a and b
+*/      
+    return bw.arrayUniq(a.filter(function(n) { return b.indexOf(n) !== -1;}));
+}
+bw.arrayBNotInA = function (a,b) {
+/** 
+    arrayBNotinA(x)
+    returns  elements of b not present in a
+*/      
+    return bw.arrayUniq(b.filter(function(n) { return a.indexOf(n) < 0;}));
+}
 //===============================================
-/**
-    @method bw.DOMIsElement() return whether a supplied element is a HTML DOM element. only useful in browser,
 
- */
 bw.DOMIsElement = function(el) {
-    var r = false;
+/**
+@method bw.DOMIsElement() - returns whether a supplied element is a HTML DOM element. only useful in browser,
+ */    var r = false;
     try {
         if(_to(el)== "undefined")
             return r;
@@ -206,11 +321,22 @@ bw.DOMIsElement = function(el) {
 
 var _isEl = bw.DOMIsElement;
 //===============================================
-/**
-    @method bw.getDOMElements() returns an array of DOM elements (if running in browser)
-    
-*/
 bw.DOMGetElements = function (el, type) {
+/**
+@method DOMGetElements(el, type) returns an array of DOM elements (if running in browser)   
+
+@param {string | DOM_node} el - if string uses CSS selector other wise if DOM element returns itself
+@return an js array of zero or more matching DOM nodes
+
+
+*/
+
+/*
+TODO: 
+ var container = document.querySelector("#test");
+ var matches = container.querySelectorAll("div.highlighted > p");
+
+*/
     var r=[],a=[],i;
 
     if (bw.isNodeJS() == false) {  // we're running in a browser
@@ -237,40 +363,91 @@ bw.DOMGetElements = function (el, type) {
                 case "name":
                     a = document.getElementsByName(el);
                     break;
-                default:  // auto 
+                case "CSS" :
+                    a = document.querySelectorAll(el);
+                default:  
+                    a = document.querySelectorAll(el);
+
             }
             for (i in a)
                 r.push(a[i]);
         }
     }
 
-    return r;
+    return r.filter(function(x){return bw.DOMIsElement(x);});
 };
 var _els = bw.DOMGetElements;
 
 // =============================================================================================
+bw.DOMSetElements = function(domElement,param) {
+/**
+@method DOMSetElements(domElement, param) sets DOM elements with the supplied (optional) params 
+
+@param {string | array | dict |function} - params to set on DOMElements
+@return an js array of zero or more matching DOM nodes
+*/
+
+    var els = bw.DOMGetElements(domElement);
+    if (els==[])
+        bw.log("dom element not found");
+
+    
+    var i,l,e, ef = function(x,p){bw.log(x,p);};
+    for (l=0; l<els.length; l++) {
+        e = els[l];
+        switch(bw.typeOf(param)) {
+            case "array":
+                try{
+                    for (i=0; i<param.length; i++) e[param[i][0]] = param[i][1];
+                }
+                catch(d) {ef(d,param);}
+                break;
+            case "object":
+                try {
+                    for (i in param)  e[i] = param[i];
+                }
+                catch(d) {ef(d,param);}
+                break;
+            case "string":
+                try {
+                    e.innerHTML = param;
+                }
+                catch(d) {ef(d,param);}
+                break;
+            case "function":
+                try {
+                    param(e); // apply a function to e
+                }
+                catch(d) {ef(d,param);}
+                break;
+            default: break;
+        }
+    }
+
+    return els;
+};
+
+bw.DOM = bw.DOMSetElements;
+
+// =============================================================================================
 /** 
-    bitwrench: color functions (used for theming and interpolations)
+bitwrench: color functions (used for theming and interpolations)
 
-    bitwrench functons operate using this internal color representation model:
-    [c0, c1, c2, alpha, model]  
-    where c0, c1, c2 are model dependant
-    alpha represents the transperancy
-    model is a color model string (lowercase) rgb, or hsl (compatible with HTML/CSS colors)
+bitwrench functons operate using this internal color representation model:
+[c0, c1, c2, alpha, model]  
+where c0, c1, c2 are model dependant
+alpha represents the transperancy
+model is a color model string (lowercase) rgb, or hsl (compatible with HTML/CSS colors)
 
-    colorParse() ==> take an input color of anymodel and output a bw [c0,c1,c2,a,m] array 
-
+colorParse() ==> take an input color of anymodel and output a bw [c0,c1,c2,a,m] array
 */
 bw.colorInterp = function(x, in0, in1, colors, stretch) {
-/**"""
-bw.colorInterp() interpolate between and array of colors.  
- x is a value between in0, in1
- colors is an array of colors supplied in rgb format e.g. ["#123", "#234"]
- colors can be anylength 
-
-
-"""*/
-
+/**
+@method colorInterp (x, lo, hi, colors[], stretch) - interpolate between and array of colors.  
+    x is a value between in0, in1
+    colors is an array of colors supplied in rgb format e.g. ["#123", "#234"]
+    colors can be anylength 
+*/
     var c = _toa(colors,"array",colors,["#000","#fff"]); // make sure we have an array of colors
     c = c.length == 0 ? ["#000","#fff"] : c; // no colors provide .. interp grayscale is default
     if (c.length == 1)
@@ -289,6 +466,7 @@ bw.colorInterp() interpolate between and array of colors.
 // =============================================================================================
 bw.colorHslToRgb = function (h, s, l, a){
 /**
+@method colorHslToRgb
 Converts an HSL color value to RGB. Conversion formula
 adapted from http://en.wikipedia.org/wiki/HSL_color_space.
 Assumes h, s, and l are contained in the set [0, 1].  Note to convert h from degrees use (h_degrees/360)
@@ -361,8 +539,9 @@ returns h, s, and l in the set [0, 1].
 
 bw.colorParse = function(s,defAlpha) {
 /**
-    @method bw.colorParse(s)
-    @description take a valid CSS style color string: #rgb | #rgba | #rrggbb | #rrggbbaa | rgb(r,g,b) | rgb(r,g,b,a) | hsl(h,s,l) | hsla(h,s,l,a )  ... and return array [c0,c1,c2,a,model] where model is one of rgb, hsl
+@method bw.colorParse(s)
+
+@description take a valid CSS style color string: #rgb | #rgba | #rrggbb | #rrggbbaa | rgb(r,g,b) | rgb(r,g,b,a) | hsl(h,s,l) | hsla(h,s,l,a )  ... and return array [c0,c1,c2,a,model] where model is one of rgb, hsl
 */
     defAlpha = _toa(defAlpha,"number",defAlpha,255);
     var r = [0,0,0,defAlpha,"rgb"]; // always return a valid type 
@@ -391,7 +570,7 @@ bw.colorParse = function(s,defAlpha) {
             }
         }
         else { // its should be of form (c0,c1,c2) or (c0,c1,c2,alpha)
-            r[4] = x[1].toLowerCase();
+            r[4] = x[1].toLocaleLowerCase();
             if ((x[2][0] == "(") && (x[2][x[2].length-1] == ")")) { // parans are present
                 var v = x[2].substring(1,x[2].length-1);
                 v = v.split(",");
@@ -415,9 +594,9 @@ bw.colorParse = function(s,defAlpha) {
 // =============================================================================================
 bw.colorToRGBHex = function(c, format) {
 /**
-    @method bw.colorToRGBHex(color) 
-    @description take a color of the form [c0,c1,c2,alpha,model] ==> convert to #rrggbbaa format
-    format (optional) can be set to auto in which case alpha is ommitted if set to 255
+@method bw.colorToRGBHex(color) 
+@description take a color of the form [c0,c1,c2,alpha,model] ==> convert to #rrggbbaa format
+format (optional) can be set to auto in which case alpha is ommitted if set to 255
  */
     var r = "#00000000";
     var ph = function(x){var y=(bw.clip(Math.round(x),0,255)).toString(16); return (y.length==1)?"0"+y:y;}; // pad hex
@@ -459,7 +638,6 @@ options {
         false : normal write 
         true : clear log and add 1st entry
         clear-only - only clear don't write, value, msg 
-
     saveMethod: "raw" | "JSON"  // raw is default, save object as passed, JSON saves stringified version (useful for exporting or saving state)
 }
  */
@@ -487,14 +665,18 @@ bw.log("","",{clear:"clear-only"}); // initialize
 // =============================================================================================
 bw.logd = function() {
 /**
-    @method bw.logd() 
-    @description: bw.logd is a log funciton which behaves similar to console.log() however instread of outputting to console, it writes to bw.log() function with the following differences: 1. all a
+@method bw.logd() 
+@description: bw.logd is a log funciton which behaves similar to console.log() however instread of outputting to console, 
+it writes to bw.log() function with the following differences: 
 
-todo: comma seperated items;
-console     ==> also (attempt) to output to console.log
-bwdbg       ==> log bw catches / errors (else silent)
+
+*/
+/*
+todo: comma seperated items;  ? done
+console     ==> also (attempt) to output to console.log ? would need to set a bw.state variable..
+bwdbg       ==> log bw catches / errors (else silent) 
 none        ==> no output (of any kind)
-stringigy   ==> takes bw.logd args and strinigyfies before writing to bw.log
+stringify   ==> takes bw.logd args and strinigyfies before writing to bw.log
 example:
 logd=console,bwlogd
 
@@ -505,7 +687,7 @@ logd=console,bwlogd
         var i=0;
         var _a = [];
         for (i=0; i< arguments.length; i++)
-            _a.push(arguments[i]); //arguments, a reserved javascript keyword is not a true array
+            _a.push(arguments[i]); //arguments, a reserved javascript keyword, is not a true array
         bw.log(_a,"bw.logd: "+bw.bwargs["bwlogd"]); // message
     }
 };
@@ -519,32 +701,37 @@ default is "raw" which is an array of values:
 [ .. , .. , .. ]
 
 also can be exported as an HTML table.
-bw.logExport({"exportFormat":"HTML"})
+bw.logExport({"format":"HTML"})
+
+or as a simple text file:
+bw.logExport("format" : "text"})
 
 see bw.saveClientFile(fname) for saving the log as a file
-
  */
     var dopts = {
-        exportFormat : "raw"  // can also be HTML table if set to "HTML"
+        "format" : "raw"  // can also be HTML table if set to "HTML"
     };
     dopts = optsCopy(dopts,opts);
 
     var _ld = _logdata;  
 
-    if (dopts["exportFormat"] == "raw")
-        return _ld;
-
-    if (dopts["exportFormat"] == "HTML") {
+    if (dopts["format"] == "HTML") {
         return bw.makeHTMLTableStr(_ld,{sortable:true});
     }
+
+    if (dopts["format"] == "text") {
+        return _ld.map(function(x){return x.map(function(y){return bw.padString(y.toString(),16,"left");}).join("\t");}).join("\n");
+    }
+
+    return _ld;
 };
 
 
 // ===================================================================================
 bw.setCookie = function (cname, cvalue, exdays) {
 /** 
-bw.setCookie(cookieName, value, expireDays)
-set a client side cookie.  Adapted from W3 Schools
+bw.setCookie(cookieName, value, expireDays) 
+set a client side cookie.  (browser only)
   */
     var d = new Date();
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
@@ -555,9 +742,9 @@ set a client side cookie.  Adapted from W3 Schools
 // ===================================================================================
 bw.getCookie = function (cname, defaultValue) {
 /** 
-bw.getCookie(cookieName, defaultValueIfNotFound)
+bw.getCookie(cookieName, defaultValueIfNotFound) (browser only)
 get a client side cookie, if it is set.  returns defaultValue if cookie could not be found
-   */
+ */
     var name = cname + "=";
     var ca = document.cookie.split(";");
     for(var i=0; i<ca.length; i++) {
@@ -593,7 +780,7 @@ x = bw.getURLParam("bar","whatever") ==> returns "whatever" since bar isn't set
 };
 
 // crude performance measurements
-var gUJTime = 0; //global closure for time.  'cause we always want a gbw gbw time :)
+var gBWTime = (new Date()).getTime(); //global closure for time.  'cause we always want a gbw gbw time :)
  
 // ===================================================================================
 bw.clearTimer = function (message) {
@@ -601,10 +788,10 @@ bw.clearTimer = function (message) {
 bw.clearTimer("message")
 When bitwrench loads its starts a page timer which can be checked for how long the page as been running (see bw.readTimer()).  bw.clearTimer() clears the timer with optional message.
  */
-    gUJTime = (new Date()).getTime();
-    if (bw.typeOf(message) == "string")
-       bw.logd(message);
-    return gUJTime;
+    gBWTime = (new Date()).getTime();
+    if (_to(message) != "undefined")
+       bw.logd(String(message));
+    return gBWTime;
 };
  
 // ===================================================================================
@@ -612,24 +799,23 @@ bw.readTimer = function (message) {
 /** 
 bw.readTimer("message")
 When bitwrench loads its starts a page timer which can be checked for how long the page as been running.
-
  */
     var ct = (new Date()).getTime();
-    if (bw.typeOf(message) == "string")
-        bw.logd(message);
-    return ct-gUJTime.getTime(); 
+    if (_to(message) != "undefined")
+       bw.logd(String(message));
+    return ct-gBWTime; 
 };
 bw.clearTimer(); //when bw is loaded, we start the timer.
 
 // ===================================================================================
-bw.prettyPrintJSON=function (json) {
+bw.htmlJSON=function (json) {
 /** 
-bw.prettyPrintJSON(object, styles) 
+bw.htmlJSON(object, styles) 
 pretty print any javascript object as displayable HTML. 
 e.g.
 document.getElementById("myPlaceToDisplay").innerHTML = bw.prettyPrintJSON(...any object ....)
-//TODO make style dict
-   */
+*/
+//TODO make style dict as a param
 	function f(json) { 
 		json = JSON.stringify(json, undefined, 2);
 		if (typeof json != "string") { json = JSON.stringify(json, undefined, 2);}
@@ -654,18 +840,32 @@ document.getElementById("myPlaceToDisplay").innerHTML = bw.prettyPrintJSON(...an
 	return "<pre style=''>"+f(json)+"</pre>";
 };
 
-// ===================================================================================
-bw.getJSONFile  = function (fname,callback_fn) {
-/** 
-bw.getJSONFile(filename,callback) 
-Attempt to load a file as JSON data.
-Works both client side and i nodejs.
+bw.depAttr.push["prettyPrintJSON"];
+bw.prettyPrintJSON = bw.htmlJSON;
 
+// ===================================================================================
+bw.getFile  = function (fname,callback_fn, options) {
+/** 
+bw.getFile(filename,callback) 
+Attempt to load a file.
+Works both client side and i nodejs.
  */
-    fname = (_to(fname) == "string") ? fname : "./data/wordfrags_en.js";     
+    var dops = {
+        parser : "raw"  // valid types are "raw", "JSON", future "CSV", "TSV" or parserFunction
+    };
+
+    dops = optsCopy(dops,options);
+
+    if (_to(fname) != "string") {
+        return "invalid filename";
+    }
+
+    var prs = (dops["parser"]=="JSON") ? JSON.parse : function(s){return s;};
+
+
     if (bw.isNodeJS() ==true) {
         var fs = require("fs");
-        fs.readFile(fname, "utf8", function (err, data) { if (err) throw err; callback_fn(JSON.parse(data)); });
+        fs.readFile(fname, "utf8", function (err, data) { if (err) throw err; callback_fn(prs(data)); });
     }
     else // running in a browser 
     {         
@@ -673,11 +873,57 @@ Works both client side and i nodejs.
         x.overrideMimeType("application/json");
         x.open("GET", fname, true); 
         x.onreadystatechange = 
-            function () {if (x.readyState == 4 && x.status == "200") {callback_fn(JSON.parse(x.responseText));}};
+            function () {if (x.readyState == 4 && x.status == "200") {callback_fn(prs(x.responseText));}};
         x.send(null);
     }
+    return "BW_OK";
 };
 
+bw.getJSONFile = function (fname,callback_fn) { return bw.getFile(fname,callback_fn,{"parser":"JSON"});};
+
+bw.copyToClipboard = function(data) {
+/** 
+bw.copyToClipboard
+simple copy content to clipboard.  (browser only)
+*/
+
+/*
+var temp = document.createElement("input");
+var b = document.getElementsByTagName("body")[0];
+b.appendChild(temp);
+
+temp.innerText = data;
+temp.select();
+document.execCommand("copy");
+temp.remove();
+
+
+    
+    var temp = document.createElement("input");
+    document.getElementsByTagName("body")[0].append(temp);
+    temp.innerHTML = data;
+    //temp.val(data).select();
+    
+    //var temp = document.createElement("input");
+    //var b = document.getElementsByTagName("body")[0];
+    //b.appendChild(temp);
+    //temp.innerText = data;
+    temp.select();
+    document.execCommand("copy");
+    temp.remove();
+*/
+    if (bw.isNodeJS())
+        return;
+    var  listener = function (e) {
+        e.clipboardData.setData("text/html", data);
+        e.clipboardData.setData("text/plain", data);
+        e.preventDefault();
+    };
+    document.addEventListener("copy", listener);
+    document.execCommand("copy");
+    document.removeEventListener("copy", listener);
+};
+    
 // ===================================================================================
 bw.saveClientFile   = function(fname,data) {
 /** 
@@ -685,9 +931,8 @@ bw.saveClientFile(fname,data) saves data the program the client environtmnet
     fname is filename to save as
     data is data to save.
 
-    works both in node and browser.
-    
-   */
+    works both in node and browser.    
+*/
     if (bw.isNodeJS()) {
         var fs = require("fs");
         fs.writeFile(fname, data, function (err) {
@@ -721,18 +966,15 @@ bw.setIntervalX = function (callback, delay, number_of_repetitions) {
 bw.setIntervalX(callbackFn, delayBtwCalls, repetitions)
 set a javascript timer to only run a max of N repetions.
 
-NoteS: 
-    Only works in browser not server side as it requires access to window object.
-    callback function is called with the interval number to be used for whatever purposes the callback likes
+Example:
+    bw.setIntervalX(function(x){console.log(x)},100,5)
  */
-
-
     var x = 0;
-    var intervalID = window.setInterval(function () {
+    var intervalID = setInterval(function () {
         callback(x);
 
         if (++x >= number_of_repetitions) {
-                window.clearInterval(intervalID);
+                clearInterval(intervalID);
         }
     }, delay);
 };
@@ -801,6 +1043,7 @@ Replace non valid HTML characters with HTML escaped equivalents.
        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g,"<br>");
 };
 
+bw.HTMLSafeStr = bw.htmlSafeStr; // deprecated
 // ===================================================================================
 bw.makeHTMLPage = function (head, body, options) {
 /** 
@@ -808,7 +1051,6 @@ bw.makeHTMLDoc(head,body,options)
 make a simple HTML document.  Note this can also be usd win bw.makeHTML()
 
 inline-bw-css --> emit bw default styles as inline css (include globals option)
-
  */
     var dopts = {
         docType : "<!DOCTYPE html>",
@@ -824,9 +1066,9 @@ inline-bw-css --> emit bw default styles as inline css (include globals option)
     dopts = optsCopy(dopts,options);
 
     var s = dopts["docType"]+"\n";
-    s += bw.buildHTMLObjString(["html",dopts["htmlParams"],[
+    s += bw.html(["html",dopts["htmlParams"],[
             "\n",
-            ["head", {}, [ "\n",dopts["headDefaultContent"].map(function(x){return bw.buildHTMLObjString(x);}).join("\n"),head,"\n"]],
+            ["head", {}, [ "\n",dopts["headDefaultContent"].map(function(x){return bw.html(x);}).join("\n"),head,"\n"]],
             "\n",
             ["body", {}, [ "\n",body,"\n"]],
             "\n"
@@ -852,6 +1094,9 @@ cssData = [
             "h3 {color:red;}",                               ==> h3             {color: red;}
             [["div",".myClass"],"color : red"],              ==> div,.myClass   {color: red;}
             ["p > .myclass", ["color:red","display:block"]]  ==> p > .myClass   {color: red;  display:block;}
+          ]
+cssData = [
+            [selectors], { dict }
           ]
 
 dicts not used because css can have multiple redundant selectors with different rules
@@ -901,22 +1146,319 @@ dicts not used because css can have multiple redundant selectors with different 
                 s="";
         }
     }
-    catch (e) {}  //  eslint-disable-line no-empty
+    catch (e) {bw.logd(e)}  //  eslint-disable-line no-empty
     if (dopts["emitStyleTag"]) {
-        s = bw.buildHTMLObjString(["style",dopts["atr"],s]);
+        s = bw.html(["style",dopts["atr"],s]);
     }
     return s;
 };
 
 // ===================================================================================
-bw.buildHTMLObjString = function (d,options) {
-/**  
-bw.buildHTMLObjString(data)  
+bw.makeCSSObjectLine = function (cssData, options) {
+/** 
+@method bw.makeCSSObj(cssData, options)
 
-takes data of one of these forms:
+expects this form:
+ [str, {k,v}] 
+ or
+ [[array of rules str], {k,v}]
+
+ */
+    var dopts = {
+        emitStyleTag: false,
+        atr: {},
+        emitCR: true
+    };
+    dopts = optsCopy(dopts,options);
+
+    var s="";
+    
+    try {
+        if (_to(cssData)== "array") {
+            switch (_to(cssData[0])) {
+                case "string":
+                    s+= cssData[0]+" {\n";
+                    break;
+                case "array":
+                    s+= cssData[0].map(function(x){return x.toString()}).join(",");
+                    break;
+                default:
+                    throw "makeCSSObjectLine type error in first argument";
+            }
+            var k;
+            if (_to(cssData[1])=="object") {
+
+                for (k in cssData[1]) {
+                    s+= "  "+k+":"+cssData[1][k];
+                    s+= dopts["emitCR"] ? "\n" : "";
+                }
+                s+= "}\n"
+            }
+        }
+    } catch(e) {
+        bw.logd(e);
+    }
+    return s;
+
+}
+// ===================================================================================
+//==================================================
+/**
+    html_fc (html form convert) converts acceptable html contructs into html json dict form: 
+    { t: <tag>, a: {attribs}, c: [content], o: {options}, s:{state}}
+    
+    does not operate on the t a c o s params --> just does the conversion
+ */
+/*
+html gen using {input}
+_typeOf(input)
+
+ "object" 
+    accepted keys below, other keys ignored
+    t: String | Number | Date() ==> tag  function==> f().toString()
+    a: {}  ==>  key : value ==>  num | str | Date | [] ==> [].join(dopts.a_join) 
+    c: [] || String | Number | Date  ==> each_item : str | {html_dict} 
+    o: {} ==> options (note inherit / copy)  => if not supplied uses previous levels options
+    
+    s: {} ==> state info (used internally) e.g. indent level, stats
+    
+    also accepts: "tag", "attrib", "content", "options", "state" as keys instead of t,a,c,o,s
+    
+    if any of t,a,c,o are a function it will be invoked immediatly w no params ==> t:myFunc ===> t:myFunc() <== 
+
+    defaults:
+        t ==> "div"
+        a ==> {}
+        c ==> ""
+        o ==> {}
+
+        s ==> {level:0, nodes: 0}
+
+"string" | "number" | Date() ==> {}
+        t ==> "div"
+        a ==> {}
+        c ==> .toString()
+        o ==> {}
+
+        s ==> {}
+
+"array" 
+    [         ]   ==> {} // defaults to empty default object 
+    [c        ]   ==> {}
+    [t,c      ]   ==> {}
+    [t,a,c    ]   ==> {}
+    [t,a,c,o  ]   ==> {}
+    [t,a,c,o,s]   ==> {}
+    [ 6+      ]   ==> {} // uses, first 5 others ignored
+    
+    // this dict repreesnts the mapping
+    {
+    0 : { }
+    1 : {c : 0},  
+    2 : {t : 0, c : 1},
+    3 : {t : 0, a : 1, c : 2}
+    4 : {t : 0, a : 1, c : 3, o : 4}
+    5 : {t : 0, a : 1, c : 3, o : 4, s : 5}
+    }
+
+    // this array contruct implements the above dict mapping more compactly
+    var i,idx = [[],["c"], ["t","c"], ["t","a","c"],["t","a","c","o"],["t","a","c","o","s"]];
+    for (i=0; i< x.length; i++) 
+        hd[idx[x.length]][i] = x[i];
+    
+*/
+/*
+bw.html_fc = function(x) {
+    var i,hd  = { t: "div", a: {}, c: "", o: {t_close: true}, s: { level: 0, nodes: 0, html:""}}; // default html dict format
+
+    switch (_to(x)) {
+        case "null" :
+        case "undefined" :
+            break;
+        case "object":
+            [["tag","t"],["attrib","a"],["content","c"],["options","o"],["state","s"]].forEach(function(z){ hd[z[1]]= z[0] in x ? x[z[0]] : hd[z[1]];});
+            for (i in hd)  // we only copy those fields we care about..
+                hd[i] = (i in x) ? x[i] : hd[i];  // need to handle fields differenty.. t : "", a : {}, c:"" | [],o :{} -- this is because we want to have proper defaults
+            break;
+        case "array":
+            var idx = [[],["c"], ["t","c"], ["t","a","c"],["t","a","c","o"],["t","a","c","o","s"]];
+            var m = (x.length > 5) ? 5 : x.length;
+            for (i=0; i< m; i++)   { 
+                console.log(idx[m][i] + ":" + x[i]);
+                hd[idx[m][i]] = x[i];
+            }
+            break;
+        case "function":  
+            hd = bw.html_fc(x(),opts); // evaluate and convert...
+            break;
+        default: // string, number, Date  
+            hd.c = x.toString();
+    }
+    return hd;
+}
+*/
+
+bw.html_fc = function(x) {
+    var i,n = { t: "div", a: {}, c: "", o: {}}; // default html dict format
+    var m = "";
+    switch (_to(x)) {
+        case "null" :
+        case "undefined" :
+            n = x;
+            break;
+        case "object":
+            [["tag","t"],["attrib","a"],["content","c"],["options","o"]].forEach(function(z){ n[z[1]]= z[0] in x ? x[z[0]] : n[z[1]];});
+            for (i in n) {  // we only copy those fields we care about..
+                n[i] = (i in x) ? x[i] : n[i]; // need to handle complicated types: t:"", a:{}, c:"" | []
+                if (bw.isnu(n[i])) {
+                    n = null; // force entire object to be null or undefined
+                    m = "HTML gen err: bad object";
+                    break;
+                }
+            }
+            break;
+        case "array":
+            var idx = [[],["c"], ["t","c"], ["t","a","c"],["t","a","c","o"],["t","a","c","o","s"]];
+            var m = (x.length > 5) ? 5 : x.length;
+            for (i=0; i< m; i++)   { 
+                console.log(idx[m][i] + ":" + x[i]);
+                n[idx[m][i]] = x[i];
+            }
+            for (i in n)
+                if (bw.isnu(n[i])) {
+                    n = null;
+                    m = "HTML gen err: bad array"
+                    break;
+                }
+
+            break;
+        case "function":  
+            n = bw.html_fc2(x(),opts); // evaluate and convert...
+            break;
+        default: // string, number, Date, bool, Regex 
+            n.c =x.toString();
+    }
+    return n; 
+}
+bw.HTMLNorm = function(x) {
+
+    function bwHTMLNode () {this.t="div"; this.a={}; this.c=""; this.o={};}
+    function bwError  (v,x) {this.value=v; this.msg = typeof x == "undefined" ? "error" : x;}
+    
+    var i,n = new bwHTMLNode(); // default html dict format
+    var m = "";
+    switch (_to(x)) {
+        case "null" :
+        case "undefined" :
+            n = new bwError(x,"HTML Node error : "+_to(x));
+            break;
+        case "object":
+            [["tag","t"],["attrib","a"],["content","c"],["options","o"]].forEach(function(z){ n[z[1]]= z[0] in x ? x[z[0]] : n[z[1]];});
+            for (i in n) {  // we only copy those fields we care about..
+                n[i] = (i in x) ? x[i] : n[i]; // need to handle complicated types: t:"", a:{}, c:"" | []
+                if (bw.isnu(n[i])) {
+                    n = null; // force entire object to be null or undefined
+                    m = "HTML gen err: bad object";
+                    break;
+                }
+            }
+            break;
+        case "array":
+            var idx = [[],["c"], ["t","c"], ["t","a","c"],["t","a","c","o"],["t","a","c","o","s"]];
+            var m = (x.length > 5) ? 5 : x.length;
+            for (i=0; i< m; i++)   { 
+                console.log(idx[m][i] + ":" + x[i]);
+                n[idx[m][i]] = x[i];
+            }
+            for (i in n)
+                if (bw.isnu(n[i])) {
+                    n = null;
+                    m = "HTML gen err: bad array"
+                    break;
+                }
+
+            break;
+        case "function":  
+            n = bw.html_fc2(x(),opts); // evaluate and convert...
+            n = _to(n)=="function" ? new bwError(n.toString(),"HTML Node error: function returned a function") : n;
+            break;
+        default: // string, number, Date, bool, Regex  ==> will be come just plain rendered content later
+            n.c =x.toString();
+    }
+    return n; 
+}
+//==================================================
+/**
+    htmld -- html generator
+    convert _accteptable_types_  ==> htmLJSON_dict
+
+*/
+bw.htmld = function(htmlJSON, opts) {
+    var dopts = {               // def options note t_ a_ c_ o_ are options applied to the t, a, c, or o local keys directly
+        t_close   : "auto",     // "auto" | "false" | "true"  ==> "auto" doesn't close certain tag decl such as !DOCTYPE, <br>
+        a_join    : ";",        // default join for attribute arrays 
+        o_pretty  : false,      // makes nice html 
+        o_indent  : 4,          // default indent when pretty printing
+        o_verbose : false,      // returns object instead of html string ==> {html: <htmloutput string>, stats: dict{}, status: "success" | "warnings"}
+        c_htmlesc : true        // true | false  ==> escape html safe chars, replace "\n" with <br> etc
+    }
+    
+
+    dopts = optsCopy(dopts,opts);
+
+    var stk=[], i, d, h="", ind_s, ind_e; // ind_s, ind_e control pretty printing
+
+    h="";
+    d = bw.html_fc(htmlJSON); // now in dict form with state vector
+    for (i in d)
+        if (_to(i) == "function")
+            d[i] = d[i](d); 
+
+    d.s["level"]++;
+    
+    d.t = d.t.toString();  
+    d.a = (_to(d.a) == "object") ? d.a : {} // must be dict.  
+    d.c = (_to(d.c) == "array" ) ? d.c : (_to(d.c)=="object") ? html_fc(d.c) : d.c.toString(); 
+    d.o = optsCopy(dopts,d.o);
+
+    //now gen html...
+    ind_s = d.o.o_pretty ? Array(d.s.level * d.o.o_indent ).join(" ") : ""; // not &nbsp; ==> we're not trying to render this space just make it pretty for inspection
+    ind_e = d.o.o_pretty ? "\n" : "";
+    
+    h += ind_s+  "<" + d.t;
+    for (i in d.a)
+        h+= " "+i+"=\""+d.a[i]+"\"";
+    h += ">"+ ind_e; 
+
+    //content gen
+    switch (_to(d.c)) {
+        case "object":
+            h += bw.htmld(d.c,dopts);
+            break;
+        case "array":
+            h += d.c.map(function(x){ return bw.htmld(x,dopts)}).join("");
+            break;
+        default:
+            h+= d.c; 
+    }
+    
+    //closing tag
+    h += ind_s + "</" + d.t + ">" + ind_e;
+    d.s.html = h;
+    return d;
+}
+
+// ===================================================================================
+bw.html = function (d,options) {
+/**  
+bw.html(data)  
+
+takes data of one of these exact forms:
 
    string
+   array: ["div", content]
    array: ["div",{attribute dict},content]
+   array: ["div",{attribute dict},content, options]
    dict:  {tag:"div", atr: {attribute dict}, "content": content}
         content can be string or array
 
@@ -940,7 +1482,7 @@ d is string or an array ["tag".{attributs dict},content] or dict of this form
     };
     
     var outFn = function(s,opts) {
-        var w  = Array(opts["indent"]).join(opts["indentStr"]);
+        var w  =  Array(opts["indent"]).join(opts["indentStr"]);
         var we =  Array(opts["indent"]-1).join(opts["indentStr"]);
         return opts["pretty"] ? "\n"+w+ s + "\n" +we: s;
     };
@@ -1002,7 +1544,7 @@ d is string or an array ["tag".{attributs dict},content] or dict of this form
             }
             break;
         default:
-            bw.log("bw.buildHTMLObjString:: error in type");
+            bw.log("bw.html:: error in type");
     }
     
     s+= "<" + t ;
@@ -1019,7 +1561,7 @@ d is string or an array ["tag".{attributs dict},content] or dict of this form
                 _c = c[i]();  // eslint-disable-line no-fallthrough
             case "object":    // eslint-disable-line no-fallthrough
             case "array" :
-            _c = bw.buildHTMLObjString(c[i],dopts);
+            _c = bw.html(c[i],dopts);
             break;
             default:
             _c = String (c[i]);
@@ -1030,14 +1572,34 @@ d is string or an array ["tag".{attributs dict},content] or dict of this form
 
     return outFn(s,dopts);
 };
+
+
+bw.makeHTML = bw.html;              //deprecated name
+bw.buildHTMLObjString = bw.html;    //deprecated name
+
+bw.depAttr.push("makeHTML");
+bw.depAttr.push("buildHTMLObjString");
 // ===================================================================================
-bw.makeHTMLList = function (listData, listType, atr, atri) {
+bw.htmla = function (listData,options) {
+/**  
+bw.htmla(listData,options)  
+
+listData is a single dim array of bw.html() compatible cnostructs
+
+*/
+    if (bw.typeOf(listData) != "array")
+        return bw.html(listData,options);
+
+    return listData.map( function(x) {return bw.html(x,options)}).join(""); 
+}
+
+// ===================================================================================
+bw.htmlList = function (listData, listType, atr, atri) {
 /**
 bw.makeHTMLList (listData, str)
 
 listType = "ul" | "ol"
 listHtml = [ item1, item2, item3, .. ]
-
  */
     if (bw.typeOf(listData) != "array")
         return "";
@@ -1048,38 +1610,95 @@ listHtml = [ item1, item2, item3, .. ]
     atr  = _toa(atr,"object",atr,{});
     atri = _toa(atr,"object",atr,{});
 
-    var lc = listData.map(function(x){return bw.buildHTMLObjString(["li",atri,x]);});
+    var lc = listData.map(function(x){return bw.html(["li",atri,x]);});
 
-    return bw.buildHTMLObjString ([listType,atr,lc]);
+    return bw.html ([listType,atr,lc]);
 };
+
+bw.makeHTMLList = bw.htmlList; //deprecated name
+bw.depAttr.push["makeHTMLList"];
+
 // ===================================================================================
-bw.makeHTMLTabs = function(tabData, atr) {
+bw.classStrAddDel = function (classData,classesToAdd,classesToDel) {
+/** 
+classStrAddDel (classData, classesToAdd, classesToDel)
+for CSS classes
+
+takes a valid classData string e.g. "myclass1 myclass2" etc
+
+and adds/del classes from classesToAdd string if they are not already present in classData
+
+classStrAddDel("class1 class2", "class3") ==> "class1 class2 class3"
+classStrAddDel("class1 class2", "class3 class4") ==> "class1 class2 class3 class4"
+classStrAddDel("class1 class2", "class 2 class3") ==> "class1 class2 class3" // doesn't add class2 again
+
+classStrAddDel("class1 class2", "class 2 class3",class1) ==> "class2 class3" // doesn't add class2 again. removes class1
+classStrAddDel("class1 class2", "",class1) ==> "class2" //  removes class1
+
+classData, classesToAdd, classesToDel may be strings (space delimited) or arrays of strings (["c1", "c2"], ["c3", "c4"], ["c1"])
+ */
+ 
+    var tnorm    = function(x){x=bw.toa(x,"undefined",[],x); return (bw.to(x)=="array")? x : x.toString().trim().split(/\s+/ig);}
+    var c  = tnorm(classData);
+    var ca = tnorm(classesToAdd);
+    var cd = tnorm(classesToDel);
+    return bw.arrayBNotInA(cd,c.concat(ca)).join(" ").trim().replace(/\s+/ig," ");
+
+}
+// ===================================================================================
+bw.classStrToggle = function (classData, classesToToggle) {
+/** 
+    classStrToggle (classData, classesToToggle)
+
+    toggles classes listed in classesToToggle
+
+    takes a valid classData string e.g. "myclass1 myclass2" etc
+*/
+    var tnorma    = function(x){x=bw.toa(x,"undefined",[],x); return (bw.to(x)=="array")? x : x.toString().trim().split(/\s+/ig);}
+    var c   = tnorma(classData);
+    var t   = tnorma(classesToToggle);
+    return bw.classStrAddDel(classData,bw.arrayBNotInA(c,t),bw.arrayBinA(c,t));
+}
+
+// ===================================================================================
+bw.htmlTabs = function(tabData, opts) {
 /** 
 bw.makeHTMLTabs(tabData, atr)
-tabData = [[tab1,tab1-content],[tab2,tab2-content],[tab2,tab2-content]]
+tabData = [[tab1Title,tab1-content], [tab2Title,tab2-content], [tab3Title,tab3-content]]
  */
     if (bw.typeOf(tabData) != "array")
         return "";
     if (tabData.length < 1)
         return "";
-    atr = (bw.typeOf(atr) == "object") ? atr :{};
-    var ti = tabData.map(function(x){return ["li",{"class":"bw-tab", "onclick":"bw.selectTabContent(this)"},x[0]];});
+
+    dopts = {
+        atr     : {"class":""},    //container {}
+        tab_atr : {"class":""},    //attributs for each tab container
+        tabc_atr: {"class":""},    //attributes for each tab-content area container
+        indent  : "",            //indent string for pretty printing
+        pretty  : false
+    }
+    dopts = optsCopy(dopts,opts);
+
+    var ti = tabData.map(function(x){return ["li",{"class":"bw-tab-item", "onclick":"bw.selectTabContent(this)"},x[0]];});
     var tc = tabData.map(function(x){return ["div",{"class":"bw-tab-content"},x[1]];});
     
-    ti[0][1]["class"] = ti[0][1]["class"] + " bw-tab-active";
-    tc[0][1]["class"] = tc[0][1]["class"] + " bw-show";
-    
-    if ("class" in atr)
-        atr["class"] += atr["class"].split(/\s+/ig).indexOf("bw-tab-container") < 0 ? " bw-tab-container": "" ;
-    else
-        atr["class"] = "bw-tab-container";
+    ti[0][1]["class"] = bw.classStrAddDel(ti[0][1]["class"], "bw-tab-active")
+    tc[0][1]["class"] = bw.classStrAddDel(tc[0][1]["class"], "bw-show");
 
-    return bw.buildHTMLObjString(["div", atr,[["ul",{"class":"bw-tab-item-list"},ti],["div",{"class":"bw-tab-content-list"},tc]]]);
+    dopts["atr"     ]["class"] = bw.classStrAddDel (dopts["atr"     ]["class"],"bw-tab-container");
+    dopts["tab_atr" ]["class"] = bw.classStrAddDel (dopts["tab_atr" ]["class"],"bw-tab-item-list");
+    dopts["tabc_atr"]["class"] = bw.classStrAddDel (dopts["tabc_atr"]["class"],"bw-tab-content-list");
+
+    return bw.html(["div", dopts["atr"],[["ul",dopts["tab_atr"],ti],["div",dopts["tabc_atr"],tc]]]);
 };
+
+bw.makeHTMLTabs = bw.htmlTabs; //deprecated name
+bw.depAttr.push("makeHTMLTabs");
 
 // ===================================================================================
 
-bw.makeHTMLTableStr = function(data,opts) {    
+bw.htmlTable = function(data,opts) {    
 /** 
 bw.makeHTMLTableStr (data, options)
 
@@ -1148,18 +1767,80 @@ Options:
     }
     else
         i=0;
-    head = bw.buildHTMLObjString(["thead",dopts.thead_atr,head]);
+    head = bw.html(["thead",dopts.thead_atr,head]);
 
     for (; i<data.length; i++) {
         r = data[i].map(function(x){return _hs(["td",dopts.td_atr,x]);}).join(""); 
         body+= _hs(["tr",dopts.tr_atr,r]);
     }
-    body = bw.buildHTMLObjString(["tbody",dopts.tbody_atr,body]);
+    body = bw.html(["tbody",dopts.tbody_atr,body]);
     //console.log(head,'\n',body);
     dopts.caption = dopts.caption == "" ? "" :  _hs(["caption",{},dopts.caption]);
     return _hs(["table",dopts.atr,[dopts.caption,head,body]]);
 };
 
+bw.makeHTMLTableStr = bw.htmlTable; ////deprecated name
+bw.depAttr.push("makeHTMLTableStr");
+
+bw.htmlAccordian   = function (data, opts) {
+/** 
+    htmlAccordian 
+    
+    [[data-title, data-to-show, {show: true|false, clickShow: true|fa;se}], // TODO: optional 3rd element
+     [...]]
+
+    data-title and data-to-show can be strings or any valid bw.html() constructs
+ */
+    var s = "";
+    if (_to(data) !== "array")
+        return s;
+
+    var dopts = {
+        atr   : { "class":"bw-accordian-container"}, // div for overall accordian
+        atr_h : { "onclick":"bw.DOMClassToggle(this.nextSibling,'bw-hide')"}, // div wrapping each header
+        atr_c : {/*"onclick":"bw.DOMClassToggle(this,'bw-hide')",*/ "class":"bw-hide"} // div wrapping each content
+    }
+    dopts = optsCopy(dopts,opts);
+    dopts["atr_h"]["onclick"]="bw.DOMClassToggle(this.nextSibling, 'bw-hide')";
+    var fns = function(x){return (x==false) ? "bw-hide" : ""; } // converts x[2] in to class string 
+    //var fc  = function(x,s){if ("class" in x){ x["class"] = } 
+
+    s = data.map(function(x){return bw.html(["div",dopts["atr_h"],x[0]])+bw.html(["div",dopts["atr_c"],x[1]])}).join("");
+    s = bw.html(["div",dopts["atr"],s]);
+    return s;
+}
+// =============================================================================================
+bw.htmlDataToImg = function(data, opts) {
+/**
+    htmlDataToImg(data, opts) // takes a 2D array of numbers and render as an image
+    each data point must evaluate to a Number or be a function which will be called with its positional arguments and must return a number.
+
+    OR
+
+    function can be a string as long as it returns a valud HTML color prefixed with "#"
+
+    e.g. 
+    "#123"
+    "#112233"
+
+    e.g.:
+        function (return 23)
+        function(x,y) { return x+y;}
+
+ */
+    var dopts = {
+        outputType  : "canvas" ,  // "table" | "divs" | "svg"
+        colorMode   : "auto",     // use greyscale map
+        colorStretch: 1.0
+    }
+
+    dopts = optsCopy(dopts,opts);
+//    if (_to(dopts["colorMapFn"]) != "function")
+//        dopts["colorMapFn"] = function(x){var c= mapScale(x,0,255,0,255,true).}
+
+
+
+}
 // =============================================================================================
 bw.naturalSort = function (as, bs){
 /** 
@@ -1178,8 +1859,8 @@ it is the default sort for bw.sortHTMLTable()
 
     var a, b, a1, b1, i= 0, L, rx=  /(\d+)|(\D+)/g, rd=  /\d/;
     if(isFinite(as) && isFinite(bs)) return as - bs;
-    a= String(as).toLowerCase();
-    b= String(bs).toLowerCase();
+    a= String(as).toLocaleLowerCase();
+    b= String(bs).toLocaleLowerCase();
     if(a=== b) return 0;
     if(!(rd.test(a) && rd.test(b))) return a> b? 1:-1;
     a= a.match(rx);
@@ -1205,17 +1886,18 @@ bw.sortHTMLTable = function (table, col, dir, sortFunction) {
 /** 
 bw.sortHTMLTable(table, column, optionalSortFunction).
 
-    sort any HTML table active in the DOM
-    table must be a valid DOM table element or be string represent a valid DOM Id.
+sort any HTML table active in the DOM
+table must be a valid DOM table element or CSS selector (first element is used)
 
-    default uses string compare. but can pass in a function
-    sortFunc(a,b,col) // a and b are the cells to compare, col is optional info on what column this is   
-  */
+default uses string compare. but can pass in a function
+sortFunc(a,b,col) // a and b are the cells to compare, col is optional info on what column this is   
+*/
     
     var  rows, switching, i, x, y, shouldSwitch;
     var sortF = bw.typeOf(sortFunction) == "function" ? sortFunction : bw.naturalSort;
-    table = _isEl(table) ? table : _els(table);
-    //table = bw.typeOf(table)=="string" ? document.getElementById(table) : table;  // if its a string try to get it by id else assume DOM element
+    
+    table = bw.DOM(table)[0];
+    
     dir = (dir==true) || (dir=="up") ? true : false;
 
     switching = true;
@@ -1253,13 +1935,12 @@ bw.sortHTMLTable(table, column, optionalSortFunction).
 // =============================================================================================
 bw.sortTableDispatch = function (item,fn) {
 /** 
-bw.sortTableDispatch(el) is used to bind sorting functions to tables generated by  bw.makeHTMLTableStr(....)
+bw.sortTableDispatch(el) is used to bind sorting functions to tables generated by  bw.htmlTable(....)
 item must be a valid DOM element or id.
-
  */
     var i;
-    if (bw.typeOf(item)=="string")
-        item = document.getElementById(item);
+    
+    item = bw.DOM(item)[0];
 
     if (bw.typeOf(item).substr(0,4) != "html")
        return false;  //something not right about this table element
@@ -1296,7 +1977,6 @@ item must be a valid DOM element or id.
 bw.function dispatch for DOM elements..
 
 the bw.fnRegistry{} is a dict of user supplied functions are assigned IDs by bitwrench.  Using these IDs one can call the functions which is useful in DOM string contexts such as makeHTMLTable() or buildHTMLObjStr().
-
  */
 var _fnRegistry = {};
 var _fnIDCounter = 0;
@@ -1317,8 +1997,6 @@ In this case in the static code call like this:
 function superDuperFunctionCode (a) { .... code for my function ... };
 bw.funcRegister(superDuperFunctionCode,"myFnName");  
 
-...
-
  */
     var fnID = "class_bwfn_" + _fnIDCounter; 
     _fnIDCounter++;
@@ -1331,8 +2009,7 @@ bw.funcRegister(superDuperFunctionCode,"myFnName");
 bw.funcUnregister = function (fnID) {
 /** 
 bw.funcUnregister(fnID)
-remove a function from the bw dispatch registry
-
+remove a function from the bitwrench dispatch registry
  */
     if (fnID in _fnRegistry)
         delete _fnRegistry[fnID];
@@ -1348,7 +2025,6 @@ errFn is optional function to call if fnID is not found.
 
 example:
     var myFunc = bw.getFuncById("myFuncID");  // function must already be registered.
-
  */
     fnID = String(fnID);
     if (fnID in _fnRegistry)
@@ -1366,7 +2042,6 @@ create a string suitble for use in DOM element dispatch.  note argstring is a li
 see bw.funcRegister() for getting valid IDs for user supplied functions.
 
 example: bw.funcGetDispatchStr("myFuncID","param1,param2")
-
  */
     
     switch (bw.typeOf(argstring)) {
@@ -1401,7 +2076,6 @@ if startWithCapitalLetter == true then the function will capitlize the first cha
     default is false;
 
 Default is a paragraph of lorem ipsum (446 chars)
-
  */
 
     startSpot  = _to(startSpot) != "number" ? 0 : Math.round(startSpot);
@@ -1423,7 +2097,7 @@ Default is a paragraph of lorem ipsum (446 chars)
     if (s[s.length-1] == " ")
         s= s.substring(0,s.length-1) + "."; // always end on non-whitespace.  "." was chosen arbitrarily.
     if ((startWithCapitalLetter == true) && (s[0].match(/[A-Z]/) == null))
-        s = "M"+s.substring(1,s.length); // arbitrary capital letter chosen whichc sorta goes will if next letter is a consonant or vowel
+        s = "M"+s.substring(1,s.length); // arbitrary capital letter chosen which sorta goes well if next letter is a consonant or vowel
 
     return s;
 
@@ -1432,20 +2106,23 @@ Default is a paragraph of lorem ipsum (446 chars)
 bw.docString = function (s, options) {
 /** 
 bw.docString(functionAsString, options)
-returns a docString for a function, if it exists inside the function.  
+returns array of valid docStrings embedded in a string 
 
-    @param docType{string} : "jsdoc" | "python" | "custom"  (python means triplequote (") 3 times), "custom" means supply delims
-    @param options {delims:[string,string]} : start, stop delimiters (only used if docType set to "custom")
+@param docType{string} : "jsdoc" | "python" | "custom"  (python means triplequote (") 3 times), "custom" means supply delims
+@param options {delims:[string,string]} : start, stop delimiters (only used if docType set to "custom")
+
+@return array{strings} : array of captured params
     
  */
+    
     var dopts = {
         docType : "jsdoc",  // "js doc", "python", "other" (jsdoc is default)
         delims  : ["/**","*/"],
         parseJSDocParams : false,
-        dropLeadingWS : false // removes leading whitespace on each line, tabs, and floating single * e.g.  " * @mycomment" ==> "@mycomment"
+        dropLeadin : false // removes lead-in whitespace or floating single * on each line e.g.  " * @mycomment" ==> "@mycomment"
     };
     dopts = optsCopy(dopts,options);
-    
+
     var _es = function (str) {return str.replace(/(?=[\\^$*+?.()|{}[\]])/g, "\\");}; // do escape of regex chars
 
     dopts["delims"] = bw.choice(dopts["docType"],{
@@ -1454,57 +2131,135 @@ returns a docString for a function, if it exists inside the function.
         "jspy"  : ["/**\"\"\"","\"\"\"*/"]   // js && python
     },dopts["delims"]);
 
-    var c = String(s);
+    var c = (_to(s)=="function") ? s.toString() : String(s);
+    var r = [];
     
     try  {
-        var re = (new RegExp( _es(dopts["delims"][0])+ "\\s*\\n([^\\*]|(\\*(?!\\/)))*" +_es(dopts["delims"][1]),"ig"));  // "([\\s\\S]*?)"                                                 
-        c = c.match(re)[0];
+        var re = (new RegExp( _es(dopts["delims"][0])+ "\\s*\\n*([^\\*]|(\\*(?!\\/)))*" +_es(dopts["delims"][1]),"ig"));  // "([\\s\\S]*?)"                                                 
+        r = c.match(re);
     }
     catch (e)   {bw.log(String(e));}
 
-    c = c.substring(dopts["delims"][0].length, c.length-dopts["delims"][1].length);
-
-    c = (dopts["dropLeadingWS"]==true) ? c.replace(/^\s*\**\s*/,"") : c;
-    return c;
-};
-
-// =============================================================================================
-bw.parseJsDocString = function(s) {
-/**
-    @method bw.parseJsDocString() - parse and extract info from a jsdoc style comment.
-    @param{string} s - a valid js docstring
-    @return an array of triplets [@param, {types}, comment info]
- */
-    var r = s.split(/[\n\r]+/).map(function(x){return x.match(/\s*\*?\s*@([A-Za-z0-9_]*)\s*(\{[A-Za-z0-9_|\s,.\-+!@#$%^&*()=[\]]*\})?([\S\s]*)/i);});
-    if (bw.typeOf(r) != "array")
-        return [];
-    if (r[0] == null)
-        return []; // bad string
+    if (_to(r)=="array") {
+        r = r.map(function(x){return x.substring(dopts["delims"][0].length, x.length-dopts["delims"][1].length);}); // this is an array of the contents of docStrings which can still be multiline in thier own right
+        r = (dopts["dropLeadin"]==true) ? r.map(function(x){return x.split(/[\n\r]/).map(function(y){return bw.trim(y,"left")+"\n";});}) : r; // need to hanlde multiline stuff here
+    }
+    else
+        r=[];
     
-    r = r.map(function(x){ try {var z = _toa(x,"array",[x[1] || "",x[2] || "",x[3] || ""],[]);} catch (e){bw.log(e);} return z;});
-    r = r.filter(function(x){if (_to(x)!="array") return false; return (x.length==3);});
+    return r;
+};
+// =============================================================================================
+bw.docStringParseLine = function(s) {
+/** 
+Parse a single line of a jsdoc string.
+    @param {string} s - line of docstring to parse
+    @return - dict of line contents {source: s, field:string, name:string, description: string, types: type1,type2 } 
+    if not a valid doc string line then returns source string only
+*/
+    var r={"source":s,  "field" : "", "types":"", "name" :"", "description" : ""};  
+    var a = s.replace(/^\s*(\/\*\*?)?|(\*\/)?\s*$/ig,""); // remove the comment markers if still there "/** my comment */"" ==> "my comment"
+    a = a.replace(/^\s*\**\s*/,"");                      // remove any cruft at beginning of line " * @myParam {}....." ==> "@myParam {}....."
+    if (a.charAt(0) == "@") { // if we have hit a @fieldname parameter we start parsing.
+        //  ([str, regex, fieldStr, result{}]) ==> ([str, regex, fieldStr, result{}])  ::> ([str,result{},fieldStr,regex])
+        /*
+        var _tok = function(x){
+            var m = x[0].match(x[1]);
+            if (m != null) {x[4][3]=m[1];}
+            x[0] = x[0].replace(x[1],"");
+            return x;
+        }
+        */
+        //r = [[e,f],[e,f],[e,f],[e,f]].reduce(,_tok);
 
-    var  _tws = function(x) { return x.replace(/^[\s\r\n]+|[\s\r\n]+$/gm,"");};  //local function to trim whitespace
-    var  _tb  = function(x) {return x.replace(/^\{?|\}?$/g,"");};
-    r= r.map (function(x){return [_tws(x[0]),_tb(_tws(x[1])),_tws(x[2])];}); // trim white space 
+        var e,x;
+        var t = bw.trim;
+        e =/^@([A-Za-z0-9_<>[\]]*)/i;
+        x = a.match(e);
+        if (x != null) {r["field"] = t(x[1]);} else return r; // didn't match... opt out here
+        a = a.replace(e,"");
+        
+        e = /^\s*\{([A-Za-z0-9_|\s,.\-+!@#$%^&*()=[\]]*)\}/i;
+        x = a.match(e);
+        if (x != null)  {r["types"]=t(x[1]);} // types is optional..
+        a = a.replace(e,""); 
+
+        e  = /^\s*([\S]*)/i;
+        x = a.match(e);
+        if (x != null)  {r["description"]=t(x[1]);} //
+        a = a.replace(e,""); 
+
+        e = /^\s*([\S]*)/i;
+        x = a.match(e);
+        if (x != null)  {r["name"]=t(x[1]);} //
+        a = a.replace(e,""); 
+        
+        // descrpition                  ==> name: ""        description : "description"
+        // description  we  we          ==> name: ""        description : "description we we "
+        // name - description  we we    ==> name: "name"    descrpition : "description we we"
+        // - description we we          ==> name: ""        description : "description we we"
+        if (r["name"].match(/^\s*-+\s*/) != null) {
+            r["name"] = r["description"];
+            r["description"] = t(a);
+        } else {
+            r["description"] = r["description"]+" "+r["name"]+" "+t(a);
+            r["name"] ="";
+        }
+    }
+    return r;
+};
+// =============================================================================================
+bw.docStringParse = function(s) {
+/** 
+    @method  bw.parseJsDocString()  parse and extract info from a jsdoc style comment.  expects there to be only a single docString comment
+    @description  docStringParse parses a jsdoc string 
+    and returns the paramters as an array which can be formatted for display or interrogtion.
+    @param{string} - a valid js docstring
+
+    @returns An array of triplets [@param, {types}, comment info]
+ */
+
+ /*
+    implementation notes:
+    the parser splits the candidate doc string in to lines.
+
+Examples:
+
+ * Assign the project to an employee.
+ * @param {Object} - The employee who is responsible for the project. ==> ["@param","object","", "The employee who is resposnsible for the project"]
+ * @param {string} employee.name - The name of the employee.
+ * @param {string} employee.department - The employee's department.
+
+
+ */
+    
+    
+    s=bw.docString(s)[0];
+    var a = s.split("\n");
+    //console.log(a);
+    var i,r=[bw.docStringParseLine(a[0])];
+    for (i=1;i<a.length;i++) {
+        var l = bw.docStringParseLine(a[i]);
+        if (l["field"]=="") { // nothing parseable...
+            if (r[r.length-1]["field"]=="") {
+                r[r.length-1]["source"] += l["source"];
+            } else
+            r[r.length-1]["description"] += l["source"];
+        } else r.push(l);
+    }
     return r;
 };
 // =============================================================================================
 bw.isHexStr = function (str, allowChars) {
 /** 
-
 isHexStr() returns a number of hex digits found or false if non-hex string.
 allow is an optional string of characters "-+."etc to permit in the string.
 the allow characters are not counted in the result
 
 examples:
-
-bw.isHEXStr("123a")      ===> 4
-
-bw.isHEXStr("12-3a")     ===> false
-
-bw.isHEXStr("12-3a","-") ===> 4
- 
+    bw.isHEXStr("123a")      ===> 4
+    bw.isHEXStr("12-3a")     ===> false
+    bw.isHEXStr("12-3a","-") ===> 4
  */
     if ( _to(str) == "string") {
         str = str.replace(new RegExp("["+allowChars+"]","g"),"");      
@@ -1528,9 +2283,8 @@ bw.fixNum = function(num,digits) {
 bw.fixedNum(num,digits)
 
 Truncate a number at digits number of places.  
-bw.fixNum(1.2345,2)  ===> 1.23
-bw.fixNum(234.32,-2) ===> 200
-
+    bw.fixNum(1.2345,2)  ===> 1.23
+    bw.fixNum(234.32,-2) ===> 200
  */
     num = Number(num); 
 
@@ -1565,7 +2319,6 @@ bw.multiArray also accepts functions
 bw.multiArray(bw.random, [3,4]) ===> creates 3x5 array of random #s btw 0..100
 
 bw.multiArray(function(){return (new Date()).getTime();},[4,6] ) ==> returns values based on the Javascript date
-
  */
 
     var v = function() { return (_to(value) == "function") ? value(): value;};
@@ -1585,10 +2338,12 @@ bw.multiArray(function(){return (new Date()).getTime();},[4,6] ) ==> returns val
 // =============================================================================================
 bw.clip = function (data, min, max) {
 /** 
-bw.clip(data, min, max)  clips data in between min and max. 
-bw.clip(5,2,20)            ==>  5   // already in range
-bw.clip(1,2,20)            ==>  2   // less than the min value so clips to min value
-bw.clip([1,4,8,35], 2, 20) ==>  [2,4,5,20]
+@method: bw.clip(data, min, max)  clips data in between min and max. 
+
+Examples:
+    bw.clip(5,2,20)            ==>  5   // already in range
+    bw.clip(1,2,20)            ==>  2   // less than the min value so clips to min value
+    bw.clip([1,4,8,35], 2, 20) ==>  [2,4,5,20]
  */
     var l = min < max ? min : max;
     var h = max > min ? max : min;
@@ -1603,12 +2358,11 @@ bw.clip([1,4,8,35], 2, 20) ==>  [2,4,5,20]
 // =============================================================================================
 bw.mapScale = function (x, in0, in1, out0, out1, options) {
 /** 
-bw.mapScale()
+@method: bw.mapScale()
 
 Map an input value x in its natural range in0...in1 to the output space out0...out1 with optional clipping
 expScale allows sigmoidal warping to stretch input values contrained to a small range. (floating point scale factor)
 x can be either a number or array of numbers.
-
  */
     var dopts = {
         clip : true,
@@ -1644,9 +2398,8 @@ x can be either a number or array of numbers.
 //https://stackoverflow.com/questions/10073699/pad-a-number-with-leading-zeros-in-javascript
 bw.padNum = function(x, width, options) {
 /**
-    @description bw.padnum() takes a number and pads left pads (default is '0')
-    @param x {number} 
-
+@description bw.padnum() takes a number and pads left pads (default is '0')
+@param x {number} 
 */
     var dopts = {
         padChar : " "
@@ -1655,11 +2408,54 @@ bw.padNum = function(x, width, options) {
     x = String(x);
     return (x.length >= width) ? x : new Array(width - x.length+1).join(dopts["padChar"]) + x;
 };
+// =============================================================================================
+bw.trim = function (s, dir) {
+/**
+@description bw.trim() trims a string on either left, right, or both.  (cross browser works before IE8)
+@param s {string} : a string to trim white space on
+@param dir {"left" | "right" | "both" | "none"} : trim white space on left only, right only or both sides, or no trim (default is both)
+*/
+    var t = bw.choice(
+        dir, 
+        {
+            "left"  : /^[\s\uFEFF\xA0\n]+/g,
+            "right" : /[\s\uFEFF\xA0\n]+$/g,
+            "none"  : /(?!)/ // useful for programmatic scenarios (eg. [....].map ) where not all of the entries should be trimmed.
+        },
+        /^[\s\uFEFF\xA0\n]+|[\s\uFEFF\xA0\n]+$/g
+    );
+    return String(_toa(s,"undefined","",s)).replace(t,"");
+};
+
+// =============================================================================================
+bw.padString = function (s, width, dir, options) {
+/**
+@description bw.padString() takes a string and pads it to the specified number of chars either left or right or centered.
+*/
+    var dopts = {
+        padChar    : " ",
+        trimDir    : "both"   // pre-trim the input string:  "left", "right", "both", "none"
+    };
+    dopts = optsCopy(dopts, options);
+
+    s = String(s);
+    var x = bw.trim(s,dopts["trimDir"]); 
+    var p = (width > x.length ) ? (width - x.length+1) : 0 ; // total padding
+    var q = bw.choice(dir,
+        {
+            "left"      : [p,0],
+            "right"     : [0,p],
+            "center"    : [Math.round(p/2), (p-Math.round(p/2)+1)]
+        },
+            [0,0]
+        );
+    return  ((new Array(q[0])).join(dopts["padChar"]))+x+(new Array(q[1])).join(dopts["padChar"]);
+};
 
 // =============================================================================================
 bw.random = function(rangeBegin, rangeEnd, options) {
 /** 
-bw.random(rangeBegin, RangeEnd, {options} 
+@method: random
 
 Return a random number between rangeBegin and RangeEnd (inclusive)
     default is 0,100
@@ -1683,7 +2479,9 @@ options
 example:
 bw.random() ==> returns a number btw 0,100
 bw.random(-4,4,{setType: "float", dims[4,5]}) ==> returns a 3x5 array of floating pt numbers btw -4,4
-    
+
+see also prandom for psuedorandom numbers
+
  */
     rangeBegin = bw.typeOf(rangeBegin)  == "number" ? rangeBegin : 0;
     rangeEnd   = bw.typeOf(rangeEnd)    == "number" ? rangeEnd   : 100;
@@ -1718,18 +2516,18 @@ bw.random(-4,4,{setType: "float", dims[4,5]}) ==> returns a 3x5 array of floatin
 
 bw.hashFnv32a= function (str, seed, returnHexStr) {
 /**
-  @moethod Calculate a 32 bit FNV-1a hash
-  Found here: https://gist.github.com/vaiorabbit/5657561
-  Ref.: http://isthe.com/chongo/tech/comp/fnv/
- 
-  @param {string} str the input value
-  
-  @param {integer} [seed] optionally pass the hash of the previous chunk
+@method Calculate a 32 bit FNV-1a hash
+Found here: https://gist.github.com/vaiorabbit/5657561
+Ref.: http://isthe.com/chongo/tech/comp/fnv/
 
-  @param {boolean} [asString=false] set to true to return the hash value as 
-      8-digit hex string instead of an integer
-  
-  @returns {integer | string}
+@param {string} str the input value
+
+@param {integer} [seed] optionally pass the hash of the previous chunk
+
+@param {boolean} [asString=false] set to true to return the hash value as 
+  8-digit hex string instead of an integer
+
+@returns {integer | string}
 */
     /*jshint bitwise:false */
     var i, l,
@@ -1749,8 +2547,7 @@ bw.hashFnv32a= function (str, seed, returnHexStr) {
 // =============================================================================================
 bw.prandom = function (rangeBegin,rangeEnd,seed, options) {
 /**
-    prandom - generate a psuedo random number from internal hash function 
-
+prandom - generate a psuedo random number from internal hash function in a given range
 */
     rangeBegin = bw.typeOf(rangeBegin)  == "number" ? rangeBegin : 0;
     rangeEnd   = bw.typeOf(rangeEnd)    == "number" ? rangeEnd   : 100;
@@ -1782,12 +2579,13 @@ bw.prandom = function (rangeBegin,rangeEnd,seed, options) {
 
 };
 // =============================================================================================
-bw.bwMakeThemeCSS   = function(color) {
+bw.CSSMakeTheme   = function(color) {
 /**
-    makeThemeCSS (color) 
+makeThemeCSS (color) 
 
-    makes a color palettte based on the supplied color which is exported as a css style
+makes a CSS theme color palettte based on the supplied color which is exported as a css style
 
+TODO
  */
     var c =  bw.colorRgbToHsl( bw.colorParse(color));
 
@@ -1796,25 +2594,12 @@ bw.bwMakeThemeCSS   = function(color) {
     var im = " !important";
     thm = thm.map(function(x,i){return [x,[["color", ((i<5)?"#000" : "#fff")+im ],["background-color",c + im] ]]; });
 
-    /*
-.w3-theme-light   {color:#000 !important; background-color:#f2f9fe !important}
-.w3-theme-dark    {color:#fff !important; background-color:#074b83 !important}
-.w3-theme-action  {color:#fff !important; background-color:#074b83 !important}
-
-.w3-theme         {color:#fff !important; background-color:#2196f3 !important}
-.w3-text-theme    {color:#2196f3 !important}
-.w3-border-theme  {border-color:#2196f3 !important}
-
-.w3-hover-theme:hover {color:#fff !important; background-color:#2196f3 !important}
-.w3-hover-text-theme:hover {color:#2196f3 !important}
-.w3-hover-border-theme:hover {border-color:#2196f3 !important}
-*/
     return thm;
 
 };
 // =============================================================================================
-bw.bwSimpleStyles = function(appendToHead, options) {
-/** 
+bw.CSSSimpleStyles = function(appendToHead, options) {
+/* 
 bw.bwSimpleStyles(appendToHead,options)
 
 bitwrench simpleStyles is the function which writes loads 
@@ -1835,13 +2620,18 @@ write a quick grid style sheet for quick n dirty layout.  See docs for examples.
     }
 
  */
-    var s ="\n", m="";//padding-left:1%; padding-right:1%;";
+    var s ="\n", m="",i,j,k,l,m;
     var _r = bw.fixNum;
     var dopts = {
         "globals"       : false,
         "id"           : "bw-default-styles",
-        "exportCSS"    : false
-
+        "exportCSS"    : false,
+        "colorset"     : {"color" : "#000", "background-color" :"#ddd", "active" : "#222"}, 
+        "themes"       :  // built-in primitive themes
+            [ // must be valid CSS keys / values
+                [".bw-thm-light"  , {"color": "#020202 !important;", "background-color": "#e2e2e2 !important;"}],
+                [".bw-thm-dark"   , {"color": "#e2e2e2 !important;", "background-color": "#020202 !important;"}],
+            ]
     };
 
     dopts = optsCopy(dopts,options);
@@ -1862,6 +2652,17 @@ write a quick grid style sheet for quick n dirty layout.  See docs for examples.
 
     s+= ([1,2,3,4,5,6].map(function(x){return ".bw-h"+x+"{ font-size: "+_r(3.2*Math.pow(.85,x+1))+"rem;}";}).join("\n"))+"\n";
 
+    //primtive in-built color themeing  see opts to overide
+    for (i in dopts["colorset"]){
+        s+= ".bw-color-"+i+" {"+i+":" +dopts["colorset"][i]+"}\n";
+    }
+
+    bw.makeCSS( dopts["themes"])
+    for (i=0; i< dopts["themes"].length; i++) {
+        s+= bw.makeCSSObjectLine( dopts["themes"][i]);
+        //s+= bw.makeCSS( dopts["themes"][i])
+    }
+        
     //text handling
     s+= ".bw-left       { text-align: left;                            }\n";
     s+= ".bw-right      { text-align: right;                           }\n";
@@ -1879,11 +2680,12 @@ write a quick grid style sheet for quick n dirty layout.  See docs for examples.
     s+= ".bw-table-sort-xxa::after { content: \"\\00a0\"; }\n";  // table sort space  (when visible arrows chosen)
 
     //tabs
-    s+= ".bw-tab-item-list { padding:0;}\n";
-    s+= ".bw-tab           { padding-top:1%; padding-left: 1%; padding-right: 1%; padding-bottom: 20px;  margin-bottom: 2%; display:inline; position:relative; border-top-right-radius: 7px; border-top-left-radius: 7px;}\n";
-    s+= ".bw-tab-active    { background-color : #eee; font-weight:700;}\n";
-    s+= ".bw-tab:hover     { cursor: pointer;  font-weight: 700;/* font-weight: 700; border: 1px  solid #bbb; */}\n";
-    s+= ".bw-tab-content   { background-color : #eee;  display: none; }\n";
+    s+= ".bw-tab-item-list    { margin: 0; padding-inline-start:0}\n";
+    s+= ".bw-tab-item         { display:inline; padding-top:5px; padding-left:10px; padding-right: 10px;  border-top-right-radius: 7px; border-top-left-radius: 7px;}\n";
+    s+= ".bw-tab-active       {/* padding-top:4px; padding-left:6px; padding-right:6px; padding-bottom:0;  */ font-weight:700;}\n";
+    s+= ".bw-tab:hover        { cursor: pointer;  font-weight: 700;/* border: 1px  solid #bbb; */}\n";
+    s+= ".bw-tab-content-list { margin: 0;  }\n";
+    s+= ".bw-tab-content      { display: none; margin-top:-1px; border-radius:0  }\n";
     s+= ".bw-tab-content, .bw-tab-active       {background-color: #ddd}\n";
 
     //grid
@@ -1901,8 +2703,8 @@ write a quick grid style sheet for quick n dirty layout.  See docs for examples.
 
     //responsive screen
     s+= "@media only screen and (min-width: 540px) {  .bw-container {    width: 94%;  }}\n";
-    s+= "@media only screen and (min-width: 720px) {  .bw-container {    width: 86%;  }}\n";
-    s+= "@media only screen and (min-width: 960px) {  .bw-container {    width: 80%;  }}\n";
+    s+= "@media only screen and (min-width: 720px) {  .bw-container {    width: 90%;  }}\n";
+    s+= "@media only screen and (min-width: 960px) {  .bw-container {    width: 86%;  }}\n";
     s+= "\n";
     
     if (bw.isNodeJS() == false) {
@@ -1915,14 +2717,16 @@ write a quick grid style sheet for quick n dirty layout.  See docs for examples.
             h.appendChild(el);
     }
     if (dopts["exportCSS"])
-        s = bw.buildHTMLObjString(["style",{"id":dopts["id"]},"\n/**\n bitwrench basic css styles\n version: "+bw.version()["version"]+"\n */"+s]);
+        s = bw.html(["style",{"id":dopts["id"]},"\n/**\n bitwrench basic css styles\n version: "+bw.version()["version"]+"\n */"+s]);
     return s;
 };
 
+bw.bwSimpleStyles = bw.CSSSimpleStyles;
+bw.depAttr.push["bwSimpleStyles"];
 
 bw.bwSimpleThemes = function (d,appendToHead) {
 /** 
-bw.bwSimpleThemes() selects simple (and I do mean simple) HTML themes for some basic elements.
+bw.bwSimpleThemes() selects simple (we I do mean simple) HTML themes for some basic elements.
 if d is an number it selects the built-in theme by index (see docs) else if d is a dictionary the elements
 in d will be converted to a CSS style.
 
@@ -1937,7 +2741,7 @@ output is a CSS style.  if appendToHead is true or omitted then the theme is app
         "tbody tr:nth-child(even)" : "background-color: #f0f0f0",
         "table, td, th"            : "border-collapse: collapse; border:1px solid #ddd; ",
         "td,th"                    : "padding:4px; ",
-        "div,body,button,table,input" : "border-radius: 5px"
+        "div,body,button,table,input" : "border-radius: 2px"
         //"div" : "padding-left:2%; padding-right:2%; padding-top:1%;padding-bottom:1%;"   
     },
     {// light theme
@@ -1947,9 +2751,8 @@ output is a CSS style.  if appendToHead is true or omitted then the theme is app
         "tbody  tr:nth-child(even)": "background-color: #ddd",
         "table, td, th"            : "border-collapse: collapse; border:1px solid #111; ",
         "td,th"                    : "padding:4px; ",
-        "div,body,button,table,input" : "border-radius: 7px;"
+        "div,body,button,table,input" : "border-radius: 2px;"
         //"div" : "padding-left:2%; padding-right:2%; padding-top:1%;padding-bottom:1%;"   
-
     }
     ];
 
@@ -1963,9 +2766,11 @@ output is a CSS style.  if appendToHead is true or omitted then the theme is app
         s+= i + " " +"{"+xs[i]+"}\n";
     }
     if (appendToHead != false) {
-        var hs = document.getElementById("bw-simple-theme-styles");
-        if (hs == null) {// first time
-            var h  = document.getElementsByTagName("head")[0];
+        //var hs = document.getElementById("bw-simple-theme-styles");
+        var hs = bw.DOM("bw-simple-theme-styles");
+        if (hs.length == 0) {// first time
+            //var h  = document.getElementsByTagName("head")[0];
+            var h = bw.DOM("head")[0];
             var el = document.createElement("style");
             el.id = "bw-simple-theme-styles";
             el.textContent = s;  //note IE8 requires .text=
@@ -2004,8 +2809,9 @@ note that DOM IDs are not required as selectTabContent() uses DOM path relative 
     </div> <!-- end of tab content sect -->
 </div>
  */
-    if (bw.typeOf(item)=="string")
-        item = document.getElementById(item);
+    //if (bw.typeOf(item)=="string")
+    //    item = document.getElementById(item);
+    item = bw.DOM(item)[0];
 
     if (bw.typeOf(item).substr(0,4) != "html")
        return false;  //unable to set tab content
@@ -2041,58 +2847,92 @@ note that DOM IDs are not required as selectTabContent() uses DOM path relative 
 
 // =============================================================================================
 
-bw.markElement = function(el, key, replace) {
+bw.DOMClass = function(el, key, replace) {
 /** 
-bw.markElement(el,value) 
-returns whether a specific DOM element class name (key) is set on the supplied element.  
+bw.DOMClass(el,value) 
+
+returns whether a specific DOM element class name (key) is set on atleast one the supplied element(s).  
 
 If replace is supplied then the class name (key) is replaced or added if it doesn't exist.
-    note that if key is not found but a replace is supplied the return-value is still false as the supplied key was not found even though a replace value is not present
+    note that if key is not found but a replace is supplied the return-value is still false as the supplied key was not found 
 
-el must be a valid dom ID string (e.g. "myID") or valid DOM element (e.g. document.getElementById("myId"))
+el must be valid element or CSS selector
 
 markElement is used by bw UI toggles
  */
-    var r = false;
-    if (bw.typeOf(el) == "string")
-        el=document.getElementById(el);
+    var r = false, elems, x,j;
+    //if (bw.typeOf(el) == "string")
+    //    el=document.getElementById(el);
+    elems = bw.DOM(el);
+    if (elems.length <=0 )
+        return r;
 
-    try {
-        var c = el.className.split(/[ ]+/);
-        var i = c.indexOf(key);
+    for (j=0; j< elems.length; j++) {
+        x = elems[j];
+        try {
+            var c = x.className.split(/[ ]+/);
+            var i = c.indexOf(key);
 
-        if (i >= 0) // found key
-            r = true;
-        
-        
-        if ((bw.typeOf(replace) == "string") && (c.indexOf(replace)== -1)){
-            if (i == -1) //key not found
-                c.push(replace);
-            else {
-                if (replace.length > 0)
-                   c[i]=replace;
-                else
-                   c.splice(i,1);
+            if (i >= 0) // found key
+                r = true;
+            
+            
+            if ((bw.typeOf(replace) == "string") && (c.indexOf(replace)== -1)){
+                if (i == -1) //key not found
+                    c.push(replace);
+                else {
+                    if (replace.length > 0)
+                       c[i]=replace;
+                    else
+                       c.splice(i,1);
+                }
+                x.className  = c.join(" ").trim();
+                r = true;
+                // element.className = element.className.replace(/\bmystyle\b/g, "");
             }
-            el.className  = c.join(" ").trim();
-            r = true;
-            // element.className = element.className.replace(/\bmystyle\b/g, "");
         }
+        catch(e) { bw.log(e);}
     }
-    catch(e) { bw.log(e);}
-
     return r;
 };
+bw.markElement = bw.DOMClass;
+bw.depAttr.push("markElement");
 
+// =============================================================================================
+bw.DOMClassToggle  = function(el,className) {
+/**
+bw.DOMClassToggle(el,classname) 
+for each element specified in el (eg "#id", ".myClass", "h2", <DOM OBJECT>) toggle className.
+
+If className is present on the object then it is removed. if it is not present it is added.
+
+
+classNames with spaces or tabs are not valid and result in undefined behavior.
+
+returns last element current toggle state.
+*/    
+    var x,i,elems = bw.DOM(el), r=false;
+    for (i=0; i< elems.length; i++) {
+        x=elems[i];
+        try {
+            r = bw.DOMClass(x,className);
+            if (r)
+                bw.DOMClass(x,className,"");
+            else
+                bw.DOMClass(x,className,className);
+
+        } catch(e) { bw.log(e);    }
+    }
+    return !r;
+}
 // =============================================================================================
 bw.version  = function() {
 /** 
-bw.version()
-bitwrench runtime version & license info.
-debateable how useful this is.. :)
+@method version() - bitwrench runtime version & license info.
+
  */
     var v = {
-        "version"   : "1.1.32", 
+        "version"   : "1.1.50", 
         "about"     : "bitwrench is a simple library of miscellaneous Javascript helper functions for common web design tasks.", 
         "copy"      : "(c) M A Chatterjee deftio (at) deftio (dot) com",    
         "url"       : "http://github.com/deftio/bitwrench",
@@ -2128,7 +2968,8 @@ var parseArgs = function(s) {
 
 var getArgs =  function () {
     if(bw.isNodeJS()==false) { // in browser
-        var els = document.getElementsByTagName("script"); // array of script elements
+        //var els = document.getElementsByTagName("script"); // array of script elements
+        var els = bw.DOM("script");
         var i,a,b;
         for (i in els) {
             try {
@@ -2140,7 +2981,7 @@ var getArgs =  function () {
                 var s = String(el.getAttribute("src"));
                 var f = "bitwrench.js";
 
-                if (s.toLowerCase().substring(s.length-f.length,s.length) == f.toLowerCase()) {
+                if (s.toLocaleLowerCase().substring(s.length-f.length,s.length) == f.toLocaleLowerCase()) {
                     s = _to(s) == "string" ? el.getAttribute("bwargs") : [""];
                     s = _to(s) == "string" ? el.getAttribute("data-bwargs") : s; //the html4/5 standard way
                     a = parseArgs(s);
@@ -2180,4 +3021,7 @@ bw.bwSimpleStyles(loadStyles,{"basics":loadStyleBasics}); // append to head the 
 
 bw.funcRegister(bw.log,"bw_log");  // this is globally registered for debugging purposes, it will never get called though unless programmer does this explicitly.
 
-})( ((typeof bw) == "undefined") ? this["bw"]={} : bw);
+//})( ((typeof bw) == "undefined") ? this["bw"]={} : bw);
+    return bw;
+}));
+

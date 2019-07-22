@@ -13,7 +13,7 @@ lint:
 	./node_modules/.bin/eslint jado.js
 
 clean:
-	rm bitwrench*.tgz -f
+	rm jado*.tgz -f
 
 .PHONY: test
 

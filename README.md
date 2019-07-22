@@ -3,12 +3,7 @@
 
 
 # jado - a javascript data objects library
-
-copyright (C) <2012>  <M. A. Chatterjee>  <deftio [at] deftio [dot] com>
-version 1.02  M. A. Chatterjee
  
-## About Jado
-
 Jado is a small library for treating all javascript objects as iterables.  This allows generic (iterated) operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
 
 ## Features
@@ -36,8 +31,33 @@ var jado = require('./jado.js')["jado"];  //adds to current scope
 ```
 
 ### Simple Code Example (same usage in either browser or nodejs)
+```javascript
 
-More examples in the examples folder
+//this works like an array.map
+jado.map([23,25],function(x){return x+1}) // returns [24, 26]
+
+//this works the same way, note that the result is also a singleton
+jado.map(23,function(x){return x+1})  // returns 24 
+
+//==================================
+// using the counting set jado.cset()
+x = jado.cset()
+x.add(2);  //add the key 2  ===> key 2 , count: 1
+x.add(3);  //add the key 3  ===> key 3 , count: 1
+x.add(3);  // key 3 ==>, count: 2
+x.keys();  // returns [2,3]
+x.add(4);  // returns [2,3,4]
+x.add(7);  // returns [2,3,4,7]
+
+//stats on the counts of the keys
+x.avg();   // returns 1.25   // avg of the counts on the keys
+x.std();   // returns 0.433  // std dev of the counts 
+x.vari();  // returns 0.1875
+
+
+```
+
+More examples in the examples folder (TBD)
 
 
 # Source code home

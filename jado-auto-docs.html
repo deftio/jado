@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<link rel="icon" type="image/x-icon" href="./images/favicon.ico" />
+<!-- above is all boiler plate -->
+
+<title>JADO.js</title>
+<!-- bitwrench.js quick-docs doc 
+	(c) M A Chatterjee
+	deftio <at> deftio <dot> com
+	github:  https:github.com/deftio/bitwrench
+	web: https://deftio.com/bitwrench
+ -->
+ <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-30080304-3"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-30080304-3');
+</script>
+
+<script type="text/javascript" src="./web/bitwrench.js" bwargs="ex1:1;ex2:2"></script>
+<script type="text/javascript" src="./jado.js"></script>
+
+</head>
+
+<body class="bw-def-page-setup bw-font-sans-serif">
+<div class="bw-container">
+<div class="bw-col-10">
+
+<img src="./icon/jado-logo-rocket.png" width="400"></img>
+<h1>Jado Auto Docs Page</h1>
+<p id="versionArea"></p>
+<br>
+Jado is a library for treating any object as an interable list and applying methods to that objects members.  If the object is a singleton (such as a number or Date()) then JADO acts like that objet is an array of one of type of that object.  This allows map, filter, reduce, each to be applied to any oject.<br><br><br>
+<br><br>JADO has no dependancies and can be used along side any other framework.  However for many cases more modern treatment of iterables using ES6 Iterable should be used.
+<br><br>
+
+<!--
+<h1 class="bw-h1">Table of Contents</h1>
+<div id="bwTableOfContents"></div>
+<br><br>
+-->
+
+<!-- function list area -->
+<h1 class="bw-h1">Function List</h1>
+The follow functions are available in JADO
+<div id="bwFunctionListID"></div> <!-- this list is dynamically generated, see javscript below -->
+<br>
+</div>
+
+<div class="bw-center" style="font-size: 9pt">JADO auto docs page</div><br>
+<script type="text/javascript">
+	
+	bw.DOM("#versionArea","<strong>JADO.js version: </strong>" + jado.version()["version"]);
+	//draw the bitwrench function list (drawn dynamically from the built-in doc strings)
+	var funcList=[],i;
+	for (i in jado) {
+		if (bw.typeOf(jado[i])=="function") {
+			funcList.push(["div" ,{"class":"bw-col-10"}, [
+				"<hr>",
+				["h3"  ,{"class":"bw-h3 color-set1", "id":"bw_func_"+i, "style":"color: #006666;"},"jado."+i+"()"], 
+				["p"   ,{"class":"bw-code"}, bw.docString(jado[i],{dropLeadin:false})[0]], // makes use of self-parsing of docString data 
+				"<br>"
+			    ]]);
+		}
+	}
+	// funcList = funcList.sort(function(a,b){return bw.naturalSort(a,b)});
+	bw.DOM("#bwFunctionListID", bw.html(["p",{"class":"bw-col-6"}, funcList]));
+
+	
+</script>
+
+</body>
+</html>

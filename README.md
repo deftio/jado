@@ -51,7 +51,10 @@ jado.map([23,25],function(x){return x+1}) // returns [24, 26]
 //this works the same way, note that the result is also a singleton
 jado.map(23,function(x){return x+1})  // returns 24 
 
+
+
 //==================================
+// jado also includes a stats object for counting keys and values called jado.cset:
 // using the counting set jado.cset()
 x = jado.cset()
 x.add(2);  //add the key 2  ===> key 2 , count: 1
@@ -70,7 +73,7 @@ x.vari();  // returns 0.1875
 ```
 
 More examples in the examples folder (TBD)
-
+The project works but I moved on to other things.  Build just updated for NPM.
 
 # Source code home
 all source is at github:
@@ -85,13 +88,13 @@ jado uses eslint for static code checking and analysis.
 
 ```bash
 npm install eslint --save-dev
-
 ./node_modules/.bin/eslint --init
 
 ```
+
 Now run the lint test like this:
 ```bash
-./node_modules/.bin/eslint jado.js   
+npm run lint 
 ```
 
 ## Tests  (requires mocha and chai test suites)  
@@ -104,7 +107,7 @@ npm install mocha --save-dev mocha
 
 Run the tests as follows:
 ```bash
-./node_modules/mocha/bin/mocha test/jado_test.js --reporter spec
+npm run test 
 
 ```
 

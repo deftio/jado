@@ -268,8 +268,8 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.4", 
-            'about'     : "Jado is a simple library operations where any variable can be treated as a list.", 
+            'version'   : "1.0.6", 
+            'about'     : "Jado is a simple library operations where any variable can be treated as an iterable.  Also includes stats for counting lists (e.g. avg var med mode etc).", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "BSD-2 Clause"};
 }
@@ -322,21 +322,22 @@ jado.cset  =  function() {
     this.clr     = function()  {c={}; return cnt();}
     this.keys    = function()  {return Object.keys(c);} //just an array of the keys
     this.get     = function(x) {var r={},i,u=uniq(x); for (i=0;i< u.length;i++) r[u[i]]=cnt(u[i]); return r;}
-    this.set     = function(x) {if (_to(x) == "object"){for (i in x){c[i]=x[i]}} return cnt(x);}; //directly set the count(s) for the given x of x's if array
+    this.set     = function(x) {if (_to(x) == "object"){for (var i in x){c[i]=x[i]}} return cnt(x);}; //directly set the count(s) for the given x of x's if array
     this.avg     = function()  {var a; return (cntk()<1)? a: this.ttl()/cntk();}
     this.min     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(0,y)}
     this.max     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(r.length-y)}
-    this.med     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1,l=r.length; r.sort(sf); return ((l&0x1)==1)?r[l/2-0.5]:[r[l/2-1],r[l/2]];}
+    this.med     = function()  {var r= _o2a(c),l=r.length; r.sort(sf); return ((l&0x1)==1)?r[l/2-0.5]:[r[l/2-1],r[l/2]];}
     this.vari    = function()  {var a=this.avg(); return _to(a)=="number" ?  _r(c,function(j,i){i+= (j-a)*(j-a); return i;},0)/this.cntk():a;}
     this.std     = function()  {var v = this.vari(); return (_to(v)=="number")?Math.sqrt(v):v;}
     this.clone   = function()  {var x = new jado.cset();  x.set(c); return x;} //creates duplicate
     this.ap2o    = function(p) {return _rx(p,function(k,v,i){i[k]=v; return i;},{});} //convert array pair list to object
     this.type    = "jado.cset"; //static type indentifier
-    this.x2o     = function(x) {} //converts any obj to an 
+    this.x2o     = function() {} //converts any obj to an 
     var cnt      = this.cnt;
     var cntk     = this.cntk;
     var sf       = function(a,b){return a[1]-b[1];} // used for sorts on counts
     this.u = uniq;
+    /*
     init = arguments[0];
     if (typeof init != "undefined") {
         if (init.type == "jado.cset")
@@ -344,6 +345,7 @@ jado.cset  =  function() {
         else
             this.add(init);
     }
+    */
     return this ;  
 }
 /***********************
@@ -361,10 +363,10 @@ getkv(dataObject,function,path,results)
 */
 jado.getkv = function(d,f,p) {
     //var r = _v(r,[]);
-    var p = (_to(p)=="undefined") ? "" : p+"/"; ////var p = _v(p,"")+'/';
+    p = (_to(p)=="undefined") ? "" : p+"/"; ////var p = _v(p,"")+'/';
     f = _to(f) == "function" ? f : function(x){jado.log(x)}; //hack for now
     /*return*/_rx(d,
-        function(k,v,i){
+        function(k,v){
             if (_il(v)) 
                 v = jado.getkv(v,f,p+k); // jado.getkv(v,f,p+k,r);            
             //console.log(p+k,':',v);
@@ -498,215 +500,6 @@ jado.p2v        = function(d,p,delim,esc) {
     return val;
 }
 
-/* iterates over all the leaf nodes of an object recursively,
-   passes path,value --> to function
-   TODO: 
-   key-value vs path-value  --> add as boolean param? (e.g. provide full path to f or just local key
-   checkR --> check circular ref
- */
-jado.mapxd       = function(d,f,pk,checkR) {
-    var r=[];
-    
-    return r;
-}
-//jado.applyd    = function (d,f)     {var _f = function(a,fa){ var i; if(_il(a)) {for (i in a){ a[i]=_f(a[i],fa);} return a;} return fa(a);};  return _f(d,f);}
-//jado.mapx      = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {r[k]=f(k,_v(d[k]));} else r=f(_v(d)); return r; }; 
-//=============================================================================
-//=============================================================================
-//jadoux begins here! 
-
-
-//jado.dispatch(event,thisobj,fnamesig){_ch(jado.dispatch.ftable(fnamesig). jado.dispatch.fname(event,thisobj);
-
-//used for html functions such as "onclick" : function() 
-jado.dispatch    = function(e,t,f) { 
-    var dtable = {};
-    jado.log('dispatch: ' +e+':'+t); 
-    
-    /* f(e)*/
-} //need to add table to store the f's somewhere
-
-//def collapseWS(self,s): #collapse and sequence of space, tabs, newlines etc to a single space
-//     return ' '.join(s.split())
-//======================================================
-//jado operates on a simulated tree based dom which is "like" XML or HTML internally.
-//each node contains a tag, attributes, content which use the internal conventions:
-// {t: <string> a: {}, c[]} // all proper Jado notes *must* have this form for Jado functions to work properly.
-// where t must be a string of 0 or more chars, a is an optional dict of key-value pairs, and c[] is an
-// array of content which can be 0 ore members of either strings, numbers, or other nodes of the
-// internal jado form: {t,a,c}
-//checks to see supplied dict is a special dict of 0 or members such that 
-//each key is a string and each value is a string, number, or function but not an array or dict
-//attrib can be "foo=bar" or dict with string:string mappings or string:number.toString() mappings
-//content can be string or [] of which each member of the array must have proper form {t: a: c:}
-jado.checkNodeForm = function (obj) {
-    
-    if (_to(obj) != "object") {
-        jado.log(obj);
-        jado.log("jado.checkNodeForm: data is not jado node");
-        return false;
-    }
-        
-    //t must be a string
-    if (_to(obj.t)!= "string")
-        return false;
-    
-    if (jado.isAttrDict(obj.a)!=true)
-        return false;
-
-    //c must be an [] of which each member of the array must have proper form {t:"" a:{} c:[]} a function which reduces to a the correct type & form                  
-    if (_to(obj["c"]) == "array"){ //now we recursively check each member of the array to be of proper form
-        for (var i=0; i< obj["c"].length; i++) {
-            if(_to(obj["c"][i]) == "object") {
-                    if (jado.checkNodeForm(obj["c"][i]) != true)
-                        return false;
-            } else if (_to(obj["c"][i]) != "string")
-                    return false;
-        }
-    }
-    else
-        return false;
-    return true;
-}
-
-//check if a dictionary is suitable for a node object's attributes
-//note needs to be isAttrDictHTML  as to disingguish from CSS  eg isAttrDictCSS
-jado.isAttrDict = function (d) {
-    if (_to(d) == "object") {
-        for (var a in d) { //could use _rx() and make this a one liner, but loop allows simple early break out
-            if ((_to(a) != "string")||(["string","number","function"].indexOf(_to(d[a])) < 0)) {
-                jado.log("jado.isAttrDict:false");
-                return false;
-            }
-        }
-    }
-    else {
-        jado.log("jado.isAttrDict:false");
-        return false;
-    }
-    return true;
-}
-
-
-/*jado.makeNode
-
-make a new "proper" node from components
-tagtype must be string
-attrib can be "foo=bar" or dict with string:string mappings or string:number.toString() mappings
-content can be string or [] of which each member of the array must have proper form {t: a: c:} or be a string
-*/
-jado.makeNode = function (tag,attrib,content) {
-    //TODO check proper input form    
-    var xc = [];
-    if (_to(content)=="array")  
-        xc=_r(content,function(x,i){if(_to(x)=="array") {i.push(makeNode(x.t,x.a,x.c))} else {i.push(x)}; return i;},[]);
-    else
-        xc= [JSON.stringify(content)]; //not an array then it _should_ be an atomic in which case convert it to string. bare node, or string, or number   
-    return {"t":tag.toString(), "a":jado.isAttrDict(attrib)?attrib:{}, "c":xc}
-}
-/*jado.makeNodeA
- 
-make a new proper node from an array makeNodeA[tag,attrib,content]
-*/
-jado.makeNodeA = function(a) {
-    if (_to(a) == "array") {
-        if (a.length == 3)
-            return jado.makeNode(a[0],a[1],a[2]);            
-    }
-    jado.log("jado.makeNodeA:requires array of 3 args");
-    return {};
-}
-
-
-jado.emitHTMLStr=function(d) {
-    var html = "";
-    /*
-    if (jado.checkNodeForm(d) != true) {
-        jado.log("jado.emitHTMLStr error in input format");
-        return html;
-    }
-    */    
-    if (_to(d)=="array") {
-        html=_r( d, function(e,i) {return i+jado.emitHTMLStr(e);}, html);
-    }         
-    else if  (_to(d)=="object"){
-        html += "<"+d.t+" "+_rx(d.a,function(k,v,i){i+= k+'="'+v+'" '; return i;},"")+">";
-        //html += (_to(d.c) == "array") ? _r(d.c,function(v,i){i+=emitHTMLStr(v); return i;},"") : d.c;
-        html += _r(d.c,function(v,i){i+=jado.emitHTMLStr(v); return i;},"");
-        html += "</"+d.t+">";
-    } 
-    else if (_to(d)=="function") {
-        html +=jado.emitHTMLStr(d());
-    }
-    else
-        html += d; 
-    return html;
-}
-
-//html tables are so useful they have their own function
-//sortable?
-jado.makeHTMLTable = function(data,attr) {    
-    if ((_to(data) != "array") || (data.length < 1))
-        return "";
-    /*
-    attr = (_to(attr)!="object")?{"id": "jado_tbl_"+Math.round(Math.random()*800000)} : attr;
-    
-    var ht= "<table "+ _rx(attrib,function(k,v,i){return i+'"'+k+'"="'+v'" '},"")+">";
-    
-    ht+="<thead><tr id='"+attr.id+"_row"+0+"'> ";
-    ht+=_r(data[0],function(k,v,i){return i+"<th id='"+attr.id+"_col"+k+"' >"+v+"</th>"},"");    
-    ht+="</tr>";
-    //for (j=0; j< t[0].length; j++) {
-    //    s+="<th style='text-align:left' id='"+attr.id+"_col"+j+"' >"+t[0][j]+"</th>";
-    //}
-    
-    ht+="</thead><tbody>";
-    ht+= _rx(data.slice(1,data.length),function(k,v,i){return "<tr id='"+attrib.id+"_row"+k+"'> "+_r(v,function(vj,ij){return ij+"<td"+ vj+"</td>";},i)},"");   
-    
-    //for (i=1; i< t.length; i++) {
-    //    ht+="<tr id='"+id+"_row"+i+"'> ";
-    //    
-    //    for (j=0; j< t[i].length; j++) { ht+="<td>"+t[i][j]+"</td>"; }
-    //    ht+="</tr>";
-   // }    
-    return ht+"</tbody></table>";
-    */
-}
-//pretty print a jado node with html formatted output.  returns a string containing HTML for debugging / code viewing
-jado.prettyPrintHTML = function(d,t) {
-    var html = "";
-    var sts = "<span style='color:blue'>", sas = "<span style='color:red'>", scs = "<span style='color:green'>";
-    var se  = "</span>", tab="&nbsp;&nbsp;&nbsp;&nbsp;"; //default 'tab' stops
-    var h = jado.htmlSafeStr; 
-    t = (typeof t == "undefined") ? 0 : t; 
-    var ts = function(t) { var s=""; for (c=0; c< t; c++) s+=tab; return s;};
-    jado.log(ts(t).length);
-    //TODO checkNode() if fail then return ""
-    if (_to(d) == "array") {
-        html = _r(d,function(e,i) {return i+prettyPrintHTML(e,t+1);},html);
-    }
-    else {
-        html += ts(t)+sts+h("<")+h(d.t) +se;
-        var k,a=""; 
-        for (k in d.a) 
-            html+= ' '+sas+h(k+'="'+d.a[k])+'"'+se;
-        html += sts+h(">")+se+'<br />';
-        if (_to(d.c) == "array") {
-            for (k in d.c) {
-                if (_to(d.c[k]) == "string")
-                    html+=ts(t+1)+jado.htmlSafeStr(d.c[k])+"<br />";
-                else if (_to(d.c[k]) == "function")
-                    html+=ts(t+1)+jado.htmlSafeStr(d.c[k]())+"<br />";
-                else
-                    html+=jado.prettyPrintHTML(d.c[k],t+1)
-            }
-        }
-        else
-            html +=ts(t+1)+ scs+ d.c+se+'<br />'; //remember this needs to be recursive eg 
-        html += ts(t)+sts+h("</")+d.t+h(">")+se+'<br />';
-    }  
-    return "<span style='font-family:courier;font-size:10pt'>"+html+"</span>";
-}
 
 //generic pretty print a json object with html formatted output.  returns a string containing HTML
 jado.prettyPrintJSON=function (json) {
@@ -714,45 +507,26 @@ jado.prettyPrintJSON=function (json) {
 		json = JSON.stringify(json, undefined, 2);
 		if (typeof json != 'string') { json = JSON.stringify(json, undefined, 2);}
 		json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+		return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
 			var sty = 'color: darkorange;';
 			if (/^"/.test(match)) {
 				if (/:$/.test(match)) {
-				    sty = 'color:red';
+                    sty = 'color:red';
 				} else {
-				    sty = 'color:purple';
+                    sty = 'color:purple';
 				}
 			} else if (/true|false/.test(match)) {
 				sty = 'color:grey';
 			} else if (/null/.test(match)) {
 				sty = 'color:black';
 			} else
-			    sty = 'color:green';
+                sty = 'color:green';
 			return '<span style="' + sty + '">' + match + '</span>';
 		});
 	}
 	return "<pre style=''>"+f(json)+"</pre>";
 }
-//not working yet, use jado.choice() where approrpriate
-jado.prettyPrintJSON2=function (json) {
-    var html = "";
-    var f= function (j) {
-        sw = {
-            "object" : function () {_rx(j,function(k,v,i){return i+" "+k+":"+f(v)+",<br />";},html)},
-            "array"  : function () {_rx(j,function(k,v,i){return i+" "+k+":"+f(v)+",<br />";},html)},
-            "string" : function () {return  html+j;},
-            "number" : function () {return  html+j;}
-        }
-    }
-    
-    //use _ch()
-        if (_to(json) in sw)
-            sw[_to(json)]();
-        else
-            html += json;
-    return html;
-}
-
+//not working yet, use jado.choice() where approrpr
 //helper function replaces non valid HTML with HTML escaped equivalents.   
 jado.htmlSafeStr = function (str) {
        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

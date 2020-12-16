@@ -1,14 +1,24 @@
 {
 	"name": "jado",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Jado is a small library for treating all javascript objects as iterables. This allows generic operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.",
 	"main": "jado.js",
 	"dependencies": {},
 	"devDependencies": {
-		"mocha": "^5.2.0"
+		"bitwrench": "^1.2.12",
+		"eslint": "^7.15.0",
+		"lodash": "^4.17.20",
+		"mocha": "^5.2.0",
+		"uglify-js": "^3.12.2"
 	},
 	"scripts": {
-		"test": "mocha"
+		"test": "mocha",
+		"generate-sri": "cat jado.js | openssl dgst -sha384 -binary | openssl base64 -A > jado.js_sri.txt && cat jado.min.js | openssl dgst -sha384 -binary | openssl base64 -A > jado.min.js_sri.txt",
+		"update_rm": "./tools/emitreadme.sh && ./tools/updatereadme.js index.html index.html",
+		"build": "./tools/update-jado-package.js package.json package.json && uglifyjs jado.js -o  jado.min.js && npm run generate-sri && npm pack",
+		"cleanbuild": "npm run clean && npm run update_rm && npm run build",
+		"clean": "rm jado*.tgz -f",
+		"lint": "./node_modules/.bin/eslint jado.js"
 	},
 	"repository": {
 		"type": "git",

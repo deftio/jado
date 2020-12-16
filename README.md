@@ -1,10 +1,18 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![NPM version](https://img.shields.io/npm/v/jado.svg?style=flat-square)](https://www.npmjs.com/package/jado)
+[![Build Status](https://travis-ci.org/deftio/jado.svg?branch=master)](https://travis-ci.org/deftio/jado)
 
 
 # jado - a javascript data objects library
  
-Jado is a small library for treating all javascript objects as iterables.  This allows generic (iterated) operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
+Jado is a small library for treating any javascript objects as iterables.  This allows generic (iterated) operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
+
+Note that many libraries (underscore etc) provide some measure of this on objects and have higher peformance for those ops.  Also the Javascript Iterable was introduced after this library was written.
+
+Test and build packages updated for simple release.
+
+Provided as UMD 
+
 
 ## Features
 
@@ -16,7 +24,7 @@ Jado is a small library for treating all javascript objects as iterables.  This 
 npm install jado --save 
 
 ## Usage
-jado can be used in a browser or nodejs (server) with no dependancies.   
+jado can be used in a browser or nodejs (server) and has no dependancies.   
 
 ### Browser: Including jado in the browser:
 In a browser just include script tags:
@@ -24,10 +32,14 @@ In a browser just include script tags:
 ```html
 <script type="text/javascript" src="./jado.min.js"></script>
 ```
+or via CDN
+```html
+<script type="text/javascript" src="./jado.min.js"></script>
+```
 
 ### In nodejs 
 ```javascript
-var jado = require('./jado.js')["jado"];  //adds to current scope
+var jado = require('./jado.js');  //adds to current scope
 ```
 
 ### Simple Code Example (same usage in either browser or nodejs)

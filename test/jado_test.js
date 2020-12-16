@@ -14,17 +14,15 @@ var assert = require("assert");
 
 
 // include jado!
-var jado = require("../jado.js")["jado"];
+var jado = require("../jado.js");
 
 //tests begin:
 
-// ================================================================
+
 describe("#typeOf()", function() {
-  
-	//simple way to test
-	//it('A usable typeof operator for internal use in jado', function() {
-	//  _typeOf("this is a string").should.equal('string');
-	//});
+/** 
+test built-in typeof operator
+*/
 
 	//using meta tests
 	var x;
@@ -35,7 +33,10 @@ describe("#typeOf()", function() {
 		{args: ["test string"],   expected: "string"},
 		{args: [x],				  expected: "undefined"},
 		{args: [null],			  expected: "null"},
-		{args: [function(){}],    expected: "function"}
+		{args: [new Date()],	  expected: "date"},
+		{args: [function(){}],    expected: "function"},
+		{args: [class{}],		  expected: "function"	},
+		{args: [class{},true],    expected: "function" }
 	];
   
   	tests.forEach(function(test) {
@@ -46,4 +47,3 @@ describe("#typeOf()", function() {
  	});
 
 });
-

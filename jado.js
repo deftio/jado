@@ -49,10 +49,39 @@ Usage and Purpose:
     objects or keys along with simple stats such as mean/std-dev/variance/modes etc.
 */
 
-//begin Code
-(function(jado){
+(function (root, factory) {
+
+    if (typeof define === "function" && define.amd) {// eslint-disable-line no-undef
+        // AMD. Register as an anonymous module.
+        
+        define([], factory);
+    } else if (typeof exports === "object") {
+        
+        if ((typeof module !== "object" ) || (typeof module !== "function") ) // this hack required for older versions of node
+        //var m =require("module");
+        // Node. Does not work with strict CommonJS, but
+        // only CommonJS-like environments that support module.exports,
+        // like Node.
+        //console.log("node...");
+        var lib= factory();
+        module.exports=lib;
+
+    } else {
+        //console.log("browser..",root, typeof root);
+        // Browser globals (root is window)
+        var libx = factory();
+        root[libx["exportName"]] = libx;
+  }
+//end of "boilerplate" ======
+}(typeof self !== "undefined" ? self : this, function ( /* dependancies go here, eg. lib1, $, ... ,  */) {
+
+"use strict";
+
+var jado = {};
+jado.exportName = "jado"; // this is the name you give to your library in browser apps.  In nodejs this is not relavant.
 
 //internall used debug mode can be toggled on or off.
+/*
 var _log= false;
 jado.setLogEnable= function(v)   { _log = (v==true) ? true:false; return _log;}
 jado.getLogEnable= function()    { return _log; }
@@ -63,7 +92,7 @@ jado.log         = function()    { if(_log) console.log(arguments)}; //defaults 
 
 //set a different log output function (default is console.log)
 jado.setLogF     = function(f)   { jado.log = (_to(f)!="function") ? jado.log : function(){ if(_log) f(arguments[0])};} 
-
+*/
 
 //Jado internally used helper Functions -- map,filter,reduce, which are used "blindly" 
 //internally in Jado because they work on mixed types e.g you can use map / filter / reduce on dictionaries
@@ -75,9 +104,13 @@ jado.setLogF     = function(f)   { jado.log = (_to(f)!="function") ? jado.log : 
 // map(),    used internally, works on [] or {}
 jado.map       = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {r[k]=f(_v(d[k]));} else r=f(_v(d));  return r; }; 
 
+
 // mapx(), allows iterator to work on both key and value
 // requires requires f to take 2 params: for arrays f(index,value), for  dicts f(key,value)
 jado.mapx      = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {r[k]=f(k,_v(d[k]));} else r=f(_v(d)); return r; }; 
+
+// forEach(), apply function to each memmber
+jado.forEach   = function (d,f)    {var k;  if(_il(_v(d))) for (k in d) {f(k,_v(d[k]));} else f(_v(d)); }; 
 
 // filter takes each item and sees whether it passes the test supplied by the passed function
 // filter, used internally, works on [] or {}
@@ -196,7 +229,7 @@ bw.typeOf(x,true)   // "object"     ---> returns base object type
     try {
         r =  (x.constructor.name.toLocaleLowerCase() == y.toLocaleLowerCase()) ?  y : x.constructor.name;  // return object's name e.g.
     }
-    catch (e) {};
+    catch (e) { } /* eslint no-empty: ["error", { "allowEmptyCatch": true }] */
     return r;
 };
 
@@ -215,6 +248,7 @@ jado.s2a       = function(s)        {return _r(s,function(v,i){ i.push(v); retur
 
 
 //internally used syntactic sugar (short hand) but also availble for external use. Not all functions have an equivalent here
+/* eslint-disable no-unused-vars */
 var _f         = jado._f  = jado.filter;       //filter              
 var _fx        = jado._fx = jado.filterx;      //filter with key,value
 var _r         = jado._r  = jado.reduce;       //reduce
@@ -229,14 +263,15 @@ var _v         = jado._v  = jado.getValue;     //not to be confused with JavaScr
 var _sv        = jado._sv = jado.setValue;     // if x is undefined use this default value
 var _il        = jado._il = jado.isList;       //returns true if an object is iterable in a "for x in y" sense.  But false for strings (see notes)
 var _ch        = jado._ch = jado.choice;       //select from a dictionary or array of choices - extensible version of switch statement
+/* eslint-enable no-unused-vars */
 
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.3", 
+            'version'   : "1.0.4", 
             'about'     : "Jado is a simple library operations where any variable can be treated as a list.", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
-            'license'   : "This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software. 	Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions: \n  1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation is required. \n  2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software. \n 3. This notice may not be removed or altered from any source distribution."};
+            'license'   : "BSD-2 Clause"};
 }
     
 
@@ -722,7 +757,7 @@ jado.prettyPrintJSON2=function (json) {
 jado.htmlSafeStr = function (str) {
        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-
-
-})(typeof jado === 'undefined'? this['jado']={}: jado);
+    // return module
+    return jado;
+}));
 

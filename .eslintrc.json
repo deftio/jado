@@ -1,7 +1,8 @@
 {
     "env": {
         "browser": true,
-        "node": true
+        "node": true,
+        "amd" : true
     },
     "extends": "eslint:recommended",
     "rules": {
@@ -13,13 +14,15 @@
             "error",
             "unix"
         ],
-        "quotes": [
-            "error",
-            "double"
-        ],
-        "semi": [
-            "error",
-            "always"
-        ]
+        "allowEmptyCatch": 0
+        //"quotes": [
+        //    "error",
+        //    "double"
+        //],
+        //"semi": [
+        //    "error",
+        //    "always"
+        //],
+        //"allowEmptyCatch": 1
     }
 }

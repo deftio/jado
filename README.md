@@ -34,7 +34,7 @@ In a browser just include script tags:
 ```
 or via CDN
 ```html
-<script type="text/javascript" src="./jado.min.js"></script>
+<script type="text/javascript" src="https://unpkg.com/jado/jado.min.js"></script>
 ```
 
 ### In nodejs 

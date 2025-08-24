@@ -14,7 +14,7 @@ var assert = require("assert");
 
 
 // include jado!
-var jado = require("../jado.js");
+var jado = require("../src/jado.js");
 
 //tests begin:
 

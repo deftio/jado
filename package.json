@@ -1,8 +1,22 @@
 {
 	"name": "jado",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"description": "Jado is a small library for treating all javascript objects as iterables. This allows generic operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.",
-	"main": "jado.js",
+	"main": "dist/jado.umd.js",
+	"module": "dist/jado.esm.js",
+	"exports": {
+		".": {
+			"import": "./dist/jado.esm.js",
+			"require": "./dist/jado.umd.js",
+			"default": "./dist/jado.umd.js"
+		}
+	},
+	"files": [
+		"dist/",
+		"src/",
+		"README.md",
+		"LICENSE.txt"
+	],
 	"dependencies": {},
 	"devDependencies": {
 		"bitwrench": "^1.2.12",
@@ -13,12 +27,12 @@
 	},
 	"scripts": {
 		"test": "mocha",
-		"generate-sri": "cat jado.js | openssl dgst -sha384 -binary | openssl base64 -A > jado.js_sri.txt && cat jado.min.js | openssl dgst -sha384 -binary | openssl base64 -A > jado.min.js_sri.txt",
+		"generate-sri": "cat dist/jado.umd.js | openssl dgst -sha384 -binary | openssl base64 -A > dist/jado.umd.js.sri && cat dist/jado.esm.js | openssl dgst -sha384 -binary | openssl base64 -A > dist/jado.esm.js.sri",
 		"update_rm": "./tools/emitreadme.sh && ./tools/updatereadme.js index.html index.html",
-		"build": "./tools/update-jado-package.js package.json package.json && uglifyjs jado.js -o  jado.min.js && npm run generate-sri && npm pack",
+		"build": "node tools/build.js && npm run generate-sri && npm pack",
 		"cleanbuild": "npm run clean && npm run update_rm && npm run build",
 		"clean": "rm jado*.tgz -f",
-		"lint": "./node_modules/.bin/eslint jado.js"
+		"lint": "./node_modules/.bin/eslint src/jado.js"
 	},
 	"repository": {
 		"type": "git",

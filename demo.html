@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jado - JavaScript Data Objects Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 30px; }
+        .demo-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        code {
+            background: #e8e8e8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .output {
+            background: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4caf50;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .philosophy {
+            background: #fff3e0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <h1>jado - Uniform Operations on Any JavaScript Type</h1>
+    
+    <div class="philosophy">
+        <strong>The Core Idea:</strong> Why write different code for singular vs plural cases? 
+        With jado, operations just work on any type - single values, arrays, objects, even null/undefined.
+    </div>
+
+    <h2>The Problem jado Solves</h2>
+    <div class="demo-section">
+        <h3>Without jado (typical JavaScript)</h3>
+        <pre>// You always need to check types
+function addOne(input) {
+    if (Array.isArray(input)) {
+        return input.map(x => x + 1);
+    } else if (typeof input === 'number') {
+        return input + 1;
+    } else {
+        return null;
+    }
+}</pre>
+        
+        <h3>With jado</h3>
+        <pre>// It just works
+function addOne(input) {
+    return jado.map(input, x => x + 1);
+}</pre>
+    </div>
+
+    <h2>Live Examples</h2>
+    <p>Open the console to see the outputs, or check the results below:</p>
+
+    <div class="demo-section">
+        <h3>1. Map works on everything</h3>
+        <pre>// On arrays (as expected)
+jado.map([1, 2, 3], x => x * 2)  // → [2, 4, 6]
+
+// On single values (no wrapping needed!)
+jado.map(5, x => x * 2)  // → 10
+
+// On objects
+jado.map({a: 1, b: 2}, x => x * 2)  // → {a: 2, b: 4}
+
+// Even on null/undefined (no errors!)
+jado.map(null, x => x * 2)  // → {}</pre>
+        <div id="map-output" class="output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h3>2. Real-world example: Processing API responses</h3>
+        <pre>// API might return one user or many
+const response1 = {id: 1, name: 'Alice'};
+const response2 = [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}];
+
+// Same code handles both!
+function getUserIds(response) {
+    return jado.map(response, user => user.id);
+}
+
+getUserIds(response1)  // → {id: 1}
+getUserIds(response2)  // → [1, 2]</pre>
+        <div id="api-output" class="output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h3>3. The Counting Set - Statistics Built In</h3>
+        <pre>const counts = jado.cset();
+
+// Add some data
+counts.add('apple');
+counts.add('apple');
+counts.add('orange');
+counts.add('apple');
+counts.add('banana');
+counts.add('banana');
+
+// Get statistics
+counts.keys()         // → ['apple', 'orange', 'banana']
+counts.count('apple') // → 3
+counts.sum()          // → 6 (total items)
+counts.avg()          // → 2.0 (average count per key)
+counts.std()          // → Standard deviation
+counts.mode()         // → 'apple' (most frequent)</pre>
+        <div id="cset-output" class="output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h3>4. Filter and Reduce - Same Story</h3>
+        <pre>// Filter works on any type
+jado.filter([1, 2, 3, 4], x => x > 2)     // → [3, 4]
+jado.filter(5, x => x > 2)                // → 5
+jado.filter({a: 1, b: 3}, x => x > 2)     // → {b: 3}
+
+// Reduce too
+jado.reduce([1, 2, 3], (a, b) => a + b, 0)  // → 6
+jado.reduce(5, (a, b) => a + b, 10)         // → 15</pre>
+        <div id="filter-output" class="output"></div>
+    </div>
+
+    <h2>Version Info</h2>
+    <div class="demo-section">
+        <pre>jado.version()</pre>
+        <div id="version-output" class="output"></div>
+    </div>
+
+    <script src="dist/jado.umd.js"></script>
+    <script>
+        // Run the demos
+        console.log('jado demos running...');
+        
+        // 1. Map examples
+        const mapResults = [
+            'jado.map([1, 2, 3], x => x * 2) = ' + JSON.stringify(jado.map([1, 2, 3], x => x * 2)),
+            'jado.map(5, x => x * 2) = ' + jado.map(5, x => x * 2),
+            'jado.map({a: 1, b: 2}, x => x * 2) = ' + JSON.stringify(jado.map({a: 1, b: 2}, x => x * 2)),
+            'jado.map(null, x => x * 2) = ' + JSON.stringify(jado.map(null, x => x * 2))
+        ];
+        document.getElementById('map-output').innerHTML = mapResults.join('<br>');
+        
+        // 2. API example
+        const response1 = {id: 1, name: 'Alice'};
+        const response2 = [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}];
+        
+        function getUserIds(response) {
+            return jado.map(response, user => user.id);
+        }
+        
+        const apiResults = [
+            'Single user: getUserIds({id: 1, name: "Alice"}) = ' + JSON.stringify(getUserIds(response1)),
+            'Multiple users: getUserIds([...]) = ' + JSON.stringify(getUserIds(response2))
+        ];
+        document.getElementById('api-output').innerHTML = apiResults.join('<br>');
+        
+        // 3. Counting set
+        const counts = jado.cset();
+        counts.add('apple');
+        counts.add('apple');
+        counts.add('orange');
+        counts.add('apple');
+        counts.add('banana');
+        counts.add('banana');
+        
+        const csetResults = [
+            'counts.keys() = ' + JSON.stringify(counts.keys()),
+            'counts.count("apple") = ' + counts.count('apple'),
+            'counts.sum() = ' + counts.sum(),
+            'counts.avg() = ' + counts.avg().toFixed(2),
+            'counts.std() = ' + counts.std().toFixed(2),
+            'counts.mode() = ' + JSON.stringify(counts.mode())
+        ];
+        document.getElementById('cset-output').innerHTML = csetResults.join('<br>');
+        
+        // 4. Filter examples
+        const filterResults = [
+            'jado.filter([1, 2, 3, 4], x => x > 2) = ' + JSON.stringify(jado.filter([1, 2, 3, 4], x => x > 2)),
+            'jado.filter(5, x => x > 2) = ' + jado.filter(5, x => x > 2),
+            'jado.filter({a: 1, b: 3}, x => x > 2) = ' + JSON.stringify(jado.filter({a: 1, b: 3}, x => x > 2)),
+            'jado.reduce([1, 2, 3], (a, b) => a + b, 0) = ' + jado.reduce([1, 2, 3], (a, b) => a + b, 0),
+            'jado.reduce(5, (a, b) => a + b, 10) = ' + jado.reduce(5, (a, b) => a + b, 10)
+        ];
+        document.getElementById('filter-output').innerHTML = filterResults.join('<br>');
+        
+        // Version info
+        const versionInfo = jado.version();
+        document.getElementById('version-output').innerHTML = 
+            `Version: ${versionInfo.version}<br>` +
+            `About: ${versionInfo.about}<br>` +
+            `License: ${versionInfo.license}`;
+        
+        console.log('All demos complete! Check the page for results.');
+    </script>
+</body>
+</html>

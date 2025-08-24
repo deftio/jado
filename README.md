@@ -1,17 +1,72 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![NPM version](https://img.shields.io/npm/v/jado.svg?style=flat-square)](https://www.npmjs.com/package/jado)
-[![Build Status](https://travis-ci.org/deftio/jado.svg?branch=master)](https://travis-ci.org/deftio/jado)
+[![CI](https://github.com/deftio/jado/actions/workflows/ci.yml/badge.svg)](https://github.com/deftio/jado/actions/workflows/ci.yml)
 
 
 # jado - a javascript data objects library
- 
-Jado is a small library for treating any javascript objects as iterables.  This allows generic (iterated) operations to be applied to any object type blindly which is useful some code and testing operations where the type is not known beforehand and some items may be singletons.
 
-Note that many libraries (underscore etc) provide some measure of this on objects and have higher peformance for those ops.  Also the Javascript Iterable was introduced after this library was written.
+Jado is a small library for treating any javascript objects as iterables. This allows generic (iterated) operations to be applied to any object type blindly which is useful for code and testing operations where the type is not known beforehand and some items may be singletons.
 
-Test and build packages updated for simple release.
+## What It Does
 
-Provided as UMD 
+```javascript
+// Works on arrays as expected
+jado.map([23,25], x => x+1)  // returns [24, 26]
+
+// Also works on singletons - no special handling needed
+jado.map(23, x => x+1)  // returns 24 (not [24])
+
+// Works on objects, strings, null, undefined - anything
+jado.filter({a:1, b:2}, x => x>1)  // returns {b:2}
+```
+
+You don't need to check if something is an array before operating on it.
+
+## Modern Perspective (2024)
+
+Modern JavaScript has excellent array methods now, which is great. But you still can't directly map/filter/reduce on:
+- Plain objects
+- Single values (non-arrays)
+- DOM NodeLists without converting them first
+- Mixed types without type checking
+
+This leads to code like:
+```javascript
+// Still common in modern JS
+const result = Array.isArray(input) 
+  ? input.map(x => x + 1) 
+  : [input].map(x => x + 1)[0];
+
+// Or with DOM elements
+const divs = document.getElementsByTagName('div');  // Returns HTMLCollection
+Array.from(divs).map(div => ...)  // Need to convert first
+```
+
+With jado, these operations just work:
+```javascript
+// Same operation on any type
+jado.map(input, x => x + 1);  // Works whether input is 23 or [23, 25]
+jado.map(nodeList, node => ...)  // Works directly on DOM collections
+```
+
+### The Design Idea
+
+The DOM API itself shows this problem - `getElementById` returns one element, `getElementsByTagName` returns a collection. You write different code for each case. Jado's approach was to make the same operations work on both without thinking about it.
+
+This pattern shows up in functional languages like Haskell where operations work uniformly across different container types. It's not that modern JavaScript's approach is wrong - explicit type handling has clear benefits. But there's something to be said for operations that handle the singleton/collection distinction automatically.
+
+### What's Still Useful
+
+1. **Testing and meta-programming** - When you don't know types ahead of time
+2. **Reducing boilerplate** - No Array.isArray() checks or Array.from() conversions
+3. **The counting set pattern** - `jado.cset()` provides statistics on collections with no modern equivalent
+4. **Uniform operations** - One function that works on any input type
+
+### Historical Note
+
+Written 2014-2018, before ES6 iterables. The library solved real problems in JavaScript at the time, and while the language has evolved significantly, the core idea - treating all types uniformly for iteration operations - remains an interesting alternative approach.
+
+Provided as UMD or ESM
 
 
 ## Features
@@ -112,6 +167,28 @@ npm run test
 ```
 
 
+## Building from Source
+
+If you want to build jado from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/deftio/jado.git
+cd jado
+
+# Install dependencies
+npm install
+
+# Run the build
+npm run build
+```
+
+This creates both UMD and ESM versions in the `dist/` directory:
+- `dist/jado.umd.js` - Universal module (works everywhere)
+- `dist/jado.esm.js` - ES Module version (for modern bundlers)
+
+The build also maintains backward compatibility by copying the UMD version to the root directory.
+
 ## Release History
 * 1.0.x Initial release
 
@@ -119,28 +196,7 @@ npm run test
 
 (OSI Approved BSD 2-clause)
 
-Copyright (c) 2011-2016, M. A. Chatterjee <deftio at deftio dot com>
-All rights reserved.
+Copyright (c) 2011-, M. A. Chatterjee <deftio at deftio dot com>
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 

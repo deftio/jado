@@ -268,7 +268,7 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.6", 
+            'version'   : "1.0.7", 
             'about'     : "Jado is a simple library operations where any variable can be treated as an iterable.  Also includes stats for counting lists (e.g. avg var med mode etc).", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "BSD-2 Clause"};

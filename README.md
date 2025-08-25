@@ -315,7 +315,7 @@ The build also maintains backward compatibility by copying the UMD version to th
 
 (OSI Approved BSD 2-clause)
 
-Copyright (c) 2011-2025, M. A. Chatterjee <deftio at deftio dot com>
+Copyright (c) 2011-2025, M. A. Chatterjee <deftio@deftio.com>
 
 
 

@@ -6,7 +6,7 @@
  *  Usage:
  *
  *
- *  M. A. Chatterjee 2014-2018
+ *  M. A. Chatterjee 2011-2025
  *
  *	@copy Copyright (C) <2014>  <M. A. Chatterjee>
  *  	
@@ -81,18 +81,14 @@ var jado = {};
 jado.exportName = "jado"; // this is the name you give to your library in browser apps.  In nodejs this is not relavant.
 
 //internall used debug mode can be toggled on or off.
-/*
 var _log= false;
 jado.setLogEnable= function(v)   { _log = (v==true) ? true:false; return _log;}
 jado.getLogEnable= function()    { return _log; }
 
-//jado.log         = function()    { if(_log) console.log(Array.prototype.slice.call(arguments, 0).join(','))}; //defaults to console, can be redirected
-
 jado.log         = function()    { if(_log) console.log(arguments)}; //defaults to console, can be redirected
 
 //set a different log output function (default is console.log)
-jado.setLogF     = function(f)   { jado.log = (_to(f)!="function") ? jado.log : function(){ if(_log) f(arguments[0])};} 
-*/
+jado.setLogF     = function(f)   { jado.log = (_to(f)!="function") ? jado.log : function(){ if(_log) f(arguments[0])};}
 
 //Jado internally used helper Functions -- map,filter,reduce, which are used "blindly" 
 //internally in Jado because they work on mixed types e.g you can use map / filter / reduce on dictionaries
@@ -268,7 +264,7 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.7", 
+            'version'   : "1.0.8", 
             'about'     : "Jado is a simple library operations where any variable can be treated as an iterable.  Also includes stats for counting lists (e.g. avg var med mode etc).", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "BSD-2 Clause"};

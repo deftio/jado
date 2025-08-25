@@ -120,7 +120,7 @@ But we lost something too: the simplicity of operations that just work.
 
 ## Still Relevant Today
 
-Even in 2024, you still can't do this in JavaScript:
+Even in 2025, you still can't do this in JavaScript:
 
 ```javascript
 // Still doesn't work
@@ -134,6 +134,54 @@ const result = maybeArray.map(x => x + 1); // Errors if not array
 ```
 
 Libraries like Lodash help, but they're explicit about types - different functions for different types (`_.map` for arrays, `_.mapValues` for objects).
+
+## The Path Navigation Problem
+
+There's another problem jado solved that's still painful today: navigating deeply nested objects.
+
+### Modern Solutions and Their Complexity
+
+**JSONPath** (2007):
+```javascript
+// JSONPath uses XPath-like syntax
+jsonpath.query(data, '$.users[?(@.age > 18)].name');
+jsonpath.query(data, '$..book[?(@.price < 10)]');
+```
+Powerful but complex. Learning curve for query syntax. Overkill for simple navigation.
+
+**Lodash's get/set** (2012):
+```javascript
+_.get(data, 'users.admin.name');
+_.get(data, ['users', 'admin', 'permissions', 0]);
+_.set(data, 'users.admin.theme', 'dark');
+```
+Good but requires a dependency. No path manipulation utilities.
+
+**Optional Chaining** (2020):
+```javascript
+data?.users?.admin?.name
+data?.users?.['admin']?.permissions?.[0]
+```
+Built into the language but only works with known property names. Can't use dynamic paths.
+
+### What Jado Did in 2014
+
+```javascript
+// Simple string paths
+jado.p2v(data, 'users/admin/name');
+jado.p2v(data, 'users/admin/permissions/0');
+
+// Convert between representations
+const path = jado.strToPath('users/admin/name');  // ['users', 'admin', 'name']
+const str = jado.pathToStr(path);                  // 'users/admin/name'
+
+// Handle special characters
+jado.p2v(data, ['config/settings', 'theme']);  // Key contains slash
+```
+
+No query language to learn. No complex syntax. Just paths. 
+
+The design philosophy again: make the simple case simple. Most of the time you just want to grab a value from a nested object. Why should that require learning XPath-like syntax or adding a 70KB dependency?
 
 ## The Pattern Lives On
 

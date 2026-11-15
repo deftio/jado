@@ -86,10 +86,10 @@
         //function2test     //input args as arrray                                                                  //expected output                              //notes               //array of tags
         [jado.map        ,  [[23,53,23,764,23,6,32,0,7]           , function(x){return x*2;}                             ],     [46, 106, 46, 1528, 46, 12, 64, 0, 14]    ,"basic map test case",[]             ],
         [jado.filter     ,  [[23,53,23,764,23,6,32,0,7]           , function(x){return x>9;}                             ],     [23, 53, 23, 764, 23, 32]                 ,"",[]],
-        [jado.reduce     ,  [[23,53,23,764,23,6,32,0,7]           , function(x,i){if(x>9) return x+i; return i}   , 0    ],     918                                       ,"",[]],
+        [jado.reduce     ,  [[23,53,23,764,23,6,32,0,7]           , function(i,x){if(x>9) return x+i; return i}   , 0    ],     918                                       ,"",[]],
         [jado.map        ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x){return x*2;}                             ],     {"01":24, "23": 46, "we":106, "xi":46}    ,"basic map test case",[]             ],
         [jado.filter     ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x){return x>29;}                            ],     [23, 53, 23, 764, 23, 32]                 ,"",[]],
-        [jado.reduce     ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(x,i){if(x>29) return x+i; return i}  , 0    ],     96                                        ,"",[]]
+        [jado.reduce     ,  [{"01":12, "23":43,"we":53,"xi":23}   , function(i,x){if(x>29) return x+i; return i}  , 0    ],     96                                        ,"",[]]
     ];
     
     //===========================================================================
@@ -198,7 +198,7 @@
     console.log("array",za);
     console.log("m  ",jado._m(za,function(x){return x*2;}) );
     console.log("f  ",jado._f(za,function(x){return x>9;}) );
-    console.log("r  ",jado._r(za,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("r  ",jado._r(za,function(i,x){if(x>9) return x+i; return i},0));
     console.log("rx ",jado._rx(za,function(k,v,i){i[v]=k;return i;},{})); //example reverse maps an array
     
     
@@ -207,7 +207,7 @@
     console.log("dict",zd);
     console.log("m  ",jado._m(zd,function(x){return x+'tada ';}) );
     console.log("f  ",jado._f(zd,function(x){return x>29;}) );
-    console.log("r  ",jado._r(zd,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("r  ",jado._r(zd,function(i,x){if(x>9) return x+i; return i},0));
     console.log("rx ",jado._rx(zd,function(k,v,i){i[v]=k;return i;},{})); //example reverse maps a dict
     
     //string (test cases need to include "", "1"  <-- zero char and 1 char strings, also ' ' vs  " " just to make we don't have something weird going on
@@ -215,7 +215,7 @@
     console.log("string",zs);
     console.log("m  ",jado._m(zs,function(x){return x.toUpperCase();}) );
     console.log("f  ",jado._f(zs,function(x){return x.toUpperCase();}) );
-    console.log("r  ",jado._r(zs,function(x,i){if(x>9) return x+i; return i},0));
+    console.log("r  ",jado._r(zs,function(i,x){if(x>9) return x+i; return i},0));
     console.log("rx ",jado._rx(jado.s2a(zs),function(k,x,i){i[x]=k;return i;},{})); //example reverse maps a dict
     */
     

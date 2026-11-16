@@ -3,9 +3,11 @@
 
 # jado
 
-jado is a small JavaScript library for `map`, `filter`, and `reduce`. It came out of work on uneven collections, where a value might be one item or many, and the useful property was that the call did not grow a type check at every step.
+jado is an experiment in a generic iterator for JavaScript. The grammar is small: `map`, `filter`, `reduce`, and `forEach`. It can be used on an array, a plain object, a single value, or null, and the shape you pass in is the shape you get back.
 
-It is kept as a small library. This is not an active project, and 1.1.0 is a maintenance pass.
+The occasion was a front end for a large scraper, around 2015. Data arrived in every shape. Sometimes an array, sometimes a plain object, sometimes a single value, and occasionally null. Each case meant slightly different code to do the same thing. Arrays had `map`. Objects did not. A single value was usually wrapped in an array and then unwrapped. Lodash covered some of the ground. Singletons were outside that, and so was skipping the check before every call.
+
+The longer look back is [What if Everything in JavaScript Were Iterable?](https://javascript.plainenglish.io/what-if-everything-in-javascript-were-iterable-8ad0ed813deb). The site has [the library](https://deftio.github.io/jado/) and [the note](https://deftio.github.io/jado/article.html).
 
 ## What it operates on
 
@@ -14,7 +16,7 @@ An array is walked by index. A plain object is walked by name, and the names are
 A few rules are easy to get wrong:
 
 * **Singletons** - `jado.map(23, fn)` returns one value, not a one-element array.
-* **Strings** - a string is one value, not a list of characters. `jado.s2a` and `jado.a2s` are there when you actually want the characters.
+* **Strings** - a string is one value, not a list of characters. `jado.s2a("ab")` is `["ab"]`. `jado.a2s` joins an array into one string.
 * **Null** - `null` stays `null`, and `undefined` stays `undefined`. Neither becomes `{}`.
 * **Contained nulls** - `jado.map({a: null}, fn)` still passes that `null` into `fn`. The same goes for a nullish member of an array.
 * **Functions as members** - `map`, `mapx`, and `forEach` call `jado.getValue` on each member, so a function stored in the collection is invoked. `filter` and `reduce` do not do that. `jado.getValue` itself is the explicit call.
@@ -52,8 +54,6 @@ var jado = require("jado");
 Older notes said `null` and `undefined` were turned into `{}` so the next call would not throw. That lost the difference between a missing value and an empty object. As of 1.1.0, `jado.map(null, fn)` is `null` and does not call `fn`. `jado.map(undefined, fn)` is `undefined`.
 
 `filter` follows the same rule for a nullish input. `reduce` on `null`, `undefined`, `[]`, or `{}` returns the seed and does not call the function. With no seed, those cases throw `TypeError`. A single value with no seed is returned as itself.
-
-Why the old conversion existed is not clear from the history. One plausible reason is that ES5 threw when you walked a nullish value, and `{}` was a short way to keep going. Another is that a missing piece of a graph was being treated as no results. Neither is established as the original reason. Absence is not an empty dictionary.
 
 | Input | `map(fn)` | `filter(pred)` | `reduce(fn, seed)` |
 |---|---|---|---|

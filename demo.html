@@ -50,14 +50,11 @@
     </style>
 </head>
 <body>
-    <h1>jado - Uniform Operations on Any JavaScript Type</h1>
-    
-    <div class="philosophy">
-        <strong>The Core Idea:</strong> Why write different code for singular vs plural cases? 
-        With jado, operations just work on any type - single values, arrays, objects, even null/undefined.
-    </div>
+    <h1>jado</h1>
 
-    <h2>The Problem jado Solves</h2>
+    <p>A small library for map, filter, and reduce. A single value stays a single value. A plain object is a set of fields, not one record.</p>
+
+    <h2>One value or a list</h2>
     <div class="demo-section">
         <h3>Without jado (typical JavaScript)</h3>
         <pre>// You always need to check types
@@ -72,8 +69,7 @@ function addOne(input) {
 }</pre>
         
         <h3>With jado</h3>
-        <pre>// It just works
-function addOne(input) {
+        <pre>function addOne(input) {
     return jado.map(input, x => x + 1);
 }</pre>
     </div>
@@ -86,38 +82,33 @@ function addOne(input) {
         <pre>// On arrays (as expected)
 jado.map([1, 2, 3], x => x * 2)  // → [2, 4, 6]
 
-// On single values (no wrapping needed!)
+// On single values
 jado.map(5, x => x * 2)  // → 10
 
-// On objects
+// On objects, field by field
 jado.map({a: 1, b: 2}, x => x * 2)  // → {a: 2, b: 4}
 
-// Even on null/undefined (no errors!)
-jado.map(null, x => x * 2)  // → {}</pre>
+// null stays null, and the function is not called
+jado.map(null, x => x * 2)  // → null</pre>
         <div id="map-output" class="output"></div>
     </div>
 
     <div class="demo-section">
-        <h3>2. Real-world example: Processing API responses</h3>
-        <pre>// API might return one user or many
-const response1 = {id: 1, name: 'Alice'};
-const response2 = [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}];
-
-// Same code handles both!
-function getUserIds(response) {
-    return jado.map(response, user => user.id);
+        <h3>2. One id, or a list of ids</h3>
+        <pre>// A plain object is not "one record". The singleton case is a non-list value.
+function tagIds(input) {
+    return jado.map(input, id => 'id-' + id);
 }
 
-getUserIds(response1)  // → {id: 1}
-getUserIds(response2)  // → [1, 2]</pre>
+tagIds(5)        // → 'id-5'
+tagIds([5, 6])   // → ['id-5', 'id-6']</pre>
         <div id="api-output" class="output"></div>
     </div>
 
     <div class="demo-section">
-        <h3>3. The Counting Set - Statistics Built In</h3>
+        <h3>3. Counting set</h3>
         <pre>const counts = jado.cset();
 
-// Add some data
 counts.add('apple');
 counts.add('apple');
 counts.add('orange');
@@ -125,13 +116,11 @@ counts.add('apple');
 counts.add('banana');
 counts.add('banana');
 
-// Get statistics
-counts.keys()         // → ['apple', 'orange', 'banana']
-counts.count('apple') // → 3
-counts.sum()          // → 6 (total items)
-counts.avg()          // → 2.0 (average count per key)
-counts.std()          // → Standard deviation
-counts.mode()         // → 'apple' (most frequent)</pre>
+counts.keys()      // → ['apple', 'orange', 'banana']
+counts.cnt('apple') // → 3
+counts.ttl()       // → 6
+counts.avg()       // → 2
+counts.std()       // → standard deviation of the counts</pre>
         <div id="cset-output" class="output"></div>
     </div>
 
@@ -168,17 +157,13 @@ jado.reduce(5, (a, b) => a + b, 10)         // → 15</pre>
         ];
         document.getElementById('map-output').innerHTML = mapResults.join('<br>');
         
-        // 2. API example
-        const response1 = {id: 1, name: 'Alice'};
-        const response2 = [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}];
-        
-        function getUserIds(response) {
-            return jado.map(response, user => user.id);
+        function tagIds(input) {
+            return jado.map(input, id => 'id-' + id);
         }
-        
+
         const apiResults = [
-            'Single user: getUserIds({id: 1, name: "Alice"}) = ' + JSON.stringify(getUserIds(response1)),
-            'Multiple users: getUserIds([...]) = ' + JSON.stringify(getUserIds(response2))
+            'tagIds(5) = ' + JSON.stringify(tagIds(5)),
+            'tagIds([5, 6]) = ' + JSON.stringify(tagIds([5, 6]))
         ];
         document.getElementById('api-output').innerHTML = apiResults.join('<br>');
         
@@ -193,11 +178,10 @@ jado.reduce(5, (a, b) => a + b, 10)         // → 15</pre>
         
         const csetResults = [
             'counts.keys() = ' + JSON.stringify(counts.keys()),
-            'counts.count("apple") = ' + counts.count('apple'),
-            'counts.sum() = ' + counts.sum(),
+            'counts.cnt("apple") = ' + counts.cnt('apple'),
+            'counts.ttl() = ' + counts.ttl(),
             'counts.avg() = ' + counts.avg().toFixed(2),
-            'counts.std() = ' + counts.std().toFixed(2),
-            'counts.mode() = ' + JSON.stringify(counts.mode())
+            'counts.std() = ' + counts.std().toFixed(2)
         ];
         document.getElementById('cset-output').innerHTML = csetResults.join('<br>');
         
@@ -220,5 +204,7 @@ jado.reduce(5, (a, b) => a + b, 10)         // → 15</pre>
         
         console.log('All demos complete! Check the page for results.');
     </script>
+<script data-goatcounter="https://deftio.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

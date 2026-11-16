@@ -1,321 +1,125 @@
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![NPM version](https://img.shields.io/npm/v/jado.svg?style=flat-square)](https://www.npmjs.com/package/jado)
-[![CI](https://github.com/deftio/jado/actions/workflows/ci.yml/badge.svg)](https://github.com/deftio/jado/actions/workflows/ci.yml)
 
+# jado
 
-# jado - a javascript data objects library
+jado is an experiment in a generic iterator for JavaScript. The grammar is small: `map`, `filter`, `reduce`, and `forEach`. It can be used on an array, a plain object, a single value, or null, and the shape you pass in is the shape you get back.
 
-Jado is a small library for treating any javascript objects as iterables. This allows generic (iterated) operations to be applied to any object type blindly which is useful for code and testing operations where the type is not known beforehand and some items may be singletons.
+The occasion was a front end for a large scraper, around 2015. Data arrived in every shape. Sometimes an array, sometimes a plain object, sometimes a single value, and occasionally null. Each case meant slightly different code to do the same thing. Arrays had `map`. Objects did not. A single value was usually wrapped in an array and then unwrapped. Lodash covered some of the ground. Singletons were outside that, and so was skipping the check before every call.
 
-## What It Does
+The longer look back is [What if Everything in JavaScript Were Iterable?](https://javascript.plainenglish.io/what-if-everything-in-javascript-were-iterable-8ad0ed813deb). The site has [the library](https://deftio.github.io/jado/) and [the note](https://deftio.github.io/jado/article.html).
 
-```javascript
-// Works on arrays as expected
-jado.map([23,25], x => x+1)  // returns [24, 26]
+## What it operates on
 
-// Also works on singletons - no special handling needed
-jado.map(23, x => x+1)  // returns 24 (not [24])
+An array is walked by index. A plain object is walked by name, and the names are kept. Anything else is one value, and the result stays one value. A plain object is a collection of fields, not a single record.
 
-// Works on objects, strings, null, undefined - anything
-jado.filter({a:1, b:2}, x => x>1)  // returns {b:2}
-```
+A few rules are easy to get wrong:
 
-You don't need to check if something is an array before operating on it.
-
-## Modern Perspective (2025)
-
-Modern JavaScript has excellent array methods now, which is great. But you still can't directly map/filter/reduce on:
-- Plain objects
-- Single values (non-arrays)
-- DOM NodeLists without converting them first
-- Mixed types without type checking
-
-This leads to code like:
-```javascript
-// Still common in modern JS
-const result = Array.isArray(input) 
-  ? input.map(x => x + 1) 
-  : [input].map(x => x + 1)[0];
-
-// Or with DOM elements
-const divs = document.getElementsByTagName('div');  // Returns HTMLCollection
-Array.from(divs).map(div => ...)  // Need to convert first
-```
-
-With jado, these operations just work:
-```javascript
-// Same operation works on ANY type - with sensible behavior for each
-jado.map(23, x => x * 2)           // 46 (singleton stays singular)
-jado.map([1,2,3], x => x * 2)      // [2, 4, 6] (arrays work as expected)
-jado.map({a:1, b:2}, x => x * 2)   // {a: 2, b: 4} (objects preserve keys)
-jado.map('hello', x => x.toUpperCase()) // 'HELLO' (strings are atomic)
-jado.map(true, x => !x)            // false (booleans work too)
-jado.map(nodeList, node => ...)    // Works directly on DOM collections
-
-// The behavior is always predictable: 
-// - Collections (arrays/objects) are iterated
-// - Atomics (numbers/strings/booleans/dates) are treated as single values
-```
-
-### The Design Idea
-
-The DOM API itself shows this problem - `getElementById` returns one element, `getElementsByTagName` returns a collection. You write different code for each case. Jado's approach was to make the same operations work on both without thinking about it.
-
-This pattern shows up in functional languages like Haskell where operations work uniformly across different container types. It's not that modern JavaScript's approach is wrong - explicit type handling has clear benefits. But there's something to be said for operations that handle the singleton/collection distinction automatically.
-
-### What's Still Useful
-
-1. **Testing and meta-programming** - When you don't know types ahead of time
-2. **Reducing boilerplate** - No Array.isArray() checks or Array.from() conversions
-3. **The counting set pattern** - `jado.cset()` combines frequency counting with statistics. In modern JS you'd need a Map for counting plus a stats library like Simple Statistics or d3-array
-4. **Uniform operations** - One function that works on any input type
-5. **Path-based navigation** - Deep object access with string paths (see below)
-
-### Historical Note
-
-Written 2014-2018, before ES6 iterables. The library solved real problems in JavaScript at the time, and while the language has evolved significantly, the core idea - treating all types uniformly for iteration operations - remains an interesting alternative approach.
-
-## The Philosophy Behind Jado
-
-### Why Uniform Operations Matter
-
-Most programming pain comes from edge cases. What if the API returns one item instead of an array? What if the value is null? What if the object is empty? Traditional approaches handle this with defensive programming:
+* **Singletons** - `jado.map(23, fn)` returns one value, not a one-element array.
+* **Strings** - a string is one value, not a list of characters. `jado.s2a("ab")` is `["ab"]`. `jado.a2s` joins an array into one string.
+* **Null** - `null` stays `null`, and `undefined` stays `undefined`. Neither becomes `{}`.
+* **Contained nulls** - `jado.map({a: null}, fn)` still passes that `null` into `fn`. The same goes for a nullish member of an array.
+* **Functions as members** - `map`, `mapx`, and `forEach` call `jado.getValue` on each member, so a function stored in the collection is invoked. `filter` and `reduce` do not do that. `jado.getValue` itself is the explicit call.
+* **Object walks** - walks use `for...in`, so an inherited enumerable name is visited. Key order is not part of the contract.
+* **Predicates** - `filter` keeps a member when the predicate result is `== true`. `true` and `1` pass. Other truthy values do not.
 
 ```javascript
-// The defensive programming pyramid of doom
-function processData(data) {
-    if (!data) return [];
-    if (Array.isArray(data)) {
-        return data.map(transform);
-    }
-    if (typeof data === 'object') {
-        return Object.values(data).map(transform);
-    }
-    return [data].map(transform);
-}
+jado.map([23, 25], function (x) { return x + 1; }); // [24, 26]
+jado.map(23, function (x) { return x + 1; });       // 24
+jado.map({a: 1, b: 2}, function (x) { return x * 2; }); // {a: 2, b: 4}
+jado.map("hi", function (x) { return x.toUpperCase(); }); // "HI"
+jado.map(null, function (x) { return x + 1; });     // null, function not called
 ```
 
-Jado's philosophy: **What if we just didn't care?** Make operations work uniformly on everything. A single value is just a collection of one. Null is just an empty collection. This isn't sloppiness - it's removing unnecessary distinctions.
+DOM collections are not special-cased. A `NodeList` is not an array and not a plain object, so it is one value.
 
-### The Functor Pattern (Without the Jargon)
+## Install
 
-In functional programming, a functor is something you can map over. Haskell makes everything mappable through typeclasses. JavaScript went the opposite direction - different methods for different types. Jado brought the functor pattern to JavaScript without requiring you to understand category theory.
+The package has no runtime dependencies. The built files are `dist/jado.umd.js` and `dist/jado.esm.js`.
+
+```bash
+npm install jado
+```
 
 ```javascript
-// In Haskell, fmap works on anything
-// fmap (+1) [1,2,3]     => [2,3,4]
-// fmap (+1) (Just 5)    => Just 6
-// fmap (+1) Nothing     => Nothing
-
-// In jado, map works on anything
-jado.map([1,2,3], x => x+1)   // [2,3,4]
-jado.map(5, x => x+1)          // 6
-jado.map(null, x => x+1)       // {}
+var jado = require("jado");
 ```
-
-### Known Quirks and Design Decisions
-
-1. **Singletons stay singular** - `jado.map(5, x => x*2)` returns `10`, not `[10]`. This was deliberate - operations preserve the "shape" of the input.
-
-2. **Null/undefined become empty objects** - Not errors, not null, but `{}`. This allows chaining operations without null checks.
-
-3. **Empty string is a key, not root** - `jado.p2v(data, '')` looks for a key named `''`, not the root object. Use `[]` or `undefined` for root.
-
-4. **Path escaping is imperfect** - Keys containing delimiters don't round-trip perfectly through string conversion. Use array paths for these cases.
-
-5. **Strings aren't iterated character-by-character** - While strings are technically iterable, jado treats them as atomic values. Use `jado.s2a()` to convert to character array if needed.
-
-### Why This Still Matters
-
-JavaScript chose explicit type safety. TypeScript doubled down on it. But there's value in exploring the path not taken. Jado shows that many problems we solve with types could also be solved by making operations more uniform.
-
-It's not that one approach is better - they solve different problems. Type safety catches errors at compile time. Uniform operations eliminate entire categories of runtime errors by making them impossible.
-
-### The Testing Use Case
-
-Where jado really shines is testing and meta-programming. When you're writing test utilities, you often don't know if you'll get one item or many. Jado lets you write one function that handles both:
-
-```javascript
-// Test helper that works with single or multiple values
-function assertAllPositive(values) {
-    const results = jado.map(values, v => v > 0);
-    const allTrue = jado.reduce(results, (a, b) => a && b, true);
-    return allTrue;
-}
-
-assertAllPositive(5);        // works
-assertAllPositive([5, 10]);  // works
-assertAllPositive({a: 5});   // works
-```
-
-Provided as UMD or ESM
-
-
-## Features
-
-* works in both server side (node_js and browser) and provided in both source and minified forms
-* no dependancies on any other libraries
-* OSI approved open-source.  
-
-## Installation (server side)
-npm install jado --save 
-
-## Usage
-jado can be used in a browser or nodejs (server) and has no dependancies.   
-
-### Browser: Including jado in the browser:
-In a browser just include script tags:
 
 ```html
-<script type="text/javascript" src="./jado.min.js"></script>
-```
-or via CDN
-```html
-<script type="text/javascript" src="https://unpkg.com/jado/jado.min.js"></script>
+<script src="dist/jado.umd.js"></script>
 ```
 
-### In nodejs 
-```javascript
-var jado = require('./jado.js');  //adds to current scope
-```
+## Null and undefined
 
-### Simple Code Example (same usage in either browser or nodejs)
-```javascript
+Older notes said `null` and `undefined` were turned into `{}` so the next call would not throw. That lost the difference between a missing value and an empty object. As of 1.1.0, `jado.map(null, fn)` is `null` and does not call `fn`. `jado.map(undefined, fn)` is `undefined`.
 
-//this works like an array.map
-jado.map([23,25],function(x){return x+1}) // returns [24, 26]
+`filter` follows the same rule for a nullish input. `reduce` on `null`, `undefined`, `[]`, or `{}` returns the seed and does not call the function. With no seed, those cases throw `TypeError`. A single value with no seed is returned as itself.
 
-//this works the same way, note that the result is also a singleton
-jado.map(23,function(x){return x+1})  // returns 24 
+| Input | `map(fn)` | `filter(pred)` | `reduce(fn, seed)` |
+|---|---|---|---|
+| `null` | `null` | `null` | seed |
+| `undefined` | `undefined` | `undefined` | seed |
+| `{}` | `{}` | `{}` | seed |
+| `[]` | `[]` | `[]` | seed |
+| `5`, accepted | `fn(5)` | `5` | `fn(seed, 5)` |
+| `5`, rejected |  | `undefined` |  |
 
+## Reduce
 
-
-//==================================
-// jado also includes a stats object for counting keys and values called jado.cset:
-// using the counting set jado.cset()
-x = jado.cset()
-x.add(2);  //add the key 2  ===> key 2 , count: 1
-x.add(3);  //add the key 3  ===> key 3 , count: 1
-x.add(3);  // key 3 ==>, count: 2
-x.keys();  // returns [2,3]
-x.add(4);  // returns [2,3,4]
-x.add(7);  // returns [2,3,4,7]
-
-//stats on the counts of the keys
-x.avg();   // returns 1.25   // avg of the counts on the keys
-x.std();   // returns 0.433  // std dev of the counts 
-x.vari();  // returns 0.1875
-
-// In modern JS, you'd need multiple tools:
-// - Map for counting
-// - Lodash for frequency: _.countBy()
-// - Simple Statistics or d3-array for stats
-// - Or write custom code combining all three
-
-
-```
-
-### Path-based Object Navigation
-
-Jado includes path operations for navigating nested objects using string paths - functionality that predates similar features in lodash and other libraries:
+`jado.reduce` now uses the same callback order as `Array.prototype.reduce`: `(accumulator, value)`. This changed in 1.1.0. Addition hides the old reversed order, so the tests use subtraction and string concatenation.
 
 ```javascript
-const data = {
-  users: {
-    admin: {
-      name: 'Alice',
-      permissions: ['read', 'write', 'delete']
-    }
-  },
-  'config/settings': {  // Keys with special characters
-    theme: 'dark'
-  }
-};
-
-// Navigate with string paths
-jado.p2v(data, 'users/admin/name')           // 'Alice'
-jado.p2v(data, 'users/admin/permissions/1')  // 'write'
-
-// Array paths for keys with delimiters
-jado.p2v(data, ['config/settings', 'theme']) // 'dark'
-
-// Path conversion utilities
-jado.strToPath('users/admin/name')   // ['users', 'admin', 'name']
-jado.pathToStr(['users', 'admin'])   // 'users/admin'
-
-// Handles non-existent paths gracefully
-jado.p2v(data, 'users/nobody')       // undefined (no errors!)
+jado.reduce([1, 2, 3], function (acc, value) { return acc - value; }, 10); // 4
 ```
 
-This predates JSONPath and lodash's `_.get()` by several years. Unlike JSONPath which uses complex query syntax, jado uses simple delimiter-based paths. Unlike XPath for XML, it's lightweight and JavaScript-native.
+`jado.reducex` is `(accumulator, value, key)`. The accumulator stays in the first position. A single value has no key, so the key is `undefined`. `mapx` and `filterx` still pass `(key, value)` on arrays and objects. On a single value, `mapx` calls `fn(value)` and `filterx` calls `fn(undefined, value)`.
 
-# Source code home
-all source is at github:
-http://github.com/deftio/jado
+An accepted single value from `filter` is that value. A rejected one is `undefined`.
 
-Web url and examples
-http://deftio.com/jado
+## Paths
 
+`jado.p2v` reads a nested value. A string path is split on `/`. An empty string is the key `""`, not the root. The root is an omitted path or `[]`. A missing path returns `undefined`. A key that contains the delimiter goes in an array path.
 
-## Linting 
-jado uses eslint for static code checking and analysis.
-
-```bash
-npm install eslint --save-dev
-./node_modules/.bin/eslint --init
-
+```javascript
+jado.p2v(data, "users/admin/name");
+jado.p2v(data, ["config/settings", "theme"]);
+jado.p2v(data, "");   // key named ""
+jado.p2v(data);       // data itself
 ```
 
-Now run the lint test like this:
-```bash
-npm run lint 
+## Counting set
+
+`jado.cset()` counts how often each key is added, and can report a mean, variance, and standard deviation of those counts.
+
+```javascript
+var x = jado.cset();
+x.add("a");
+x.add("a");
+x.add("b");
+x.cnt("a"); // 2
+x.ttl();    // 3
+x.avg();    // 1.5
 ```
 
-## Tests  (requires mocha and chai test suites)  
-jado is tested with the mocha framework installed locally using npm
+## Other notes
+
+`jado.cloneType` returns an empty value for the core types: array, plain object, string, number, boolean, date, function, regexp, and the usual typed arrays. `null` and `undefined` come back as themselves. A custom class is not constructed, and the result is `undefined`.
+
+## Building
 
 ```bash
-npm install mocha --save-dev mocha
-
-```
-
-Run the tests as follows:
-```bash
-npm run test 
-
-```
-
-
-## Building from Source
-
-If you want to build jado from source:
-
-```bash
-# Clone the repository
 git clone https://github.com/deftio/jado.git
 cd jado
-
-# Install dependencies
 npm install
-
-# Run the build
+npm test
+npm run lint
 npm run build
 ```
 
-This creates both UMD and ESM versions in the `dist/` directory:
-- `dist/jado.umd.js` - Universal module (works everywhere)
-- `dist/jado.esm.js` - ES Module version (for modern bundlers)
-
-The build also maintains backward compatibility by copying the UMD version to the root directory.
-
-## Release History
-* 1.0.x Initial release
+The site in `docs/` is the GitHub Pages page. It is built with bitwrench.
 
 ## License
 
-(OSI Approved BSD 2-clause)
+BSD 2-clause.
 
-Copyright (c) 2011-2025, M. A. Chatterjee <deftio@deftio.com>
-
-
-
+Copyright (c) 2011-2026, M. A. Chatterjee <deftio@deftio.com>

@@ -43,7 +43,7 @@
   which sounds like JATO and to say I wrote a mini lib with a recursive acronym. 
 
 Usage and Purpose:
-    JADO allows any object to be interated on or have values applied to it.  In this way one can apply map/filter/reduce/each to any object generically.
+    JADO allows any object to be iterated on or have values applied to it.  In this way one can apply map/filter/reduce/each to any object generically.
 
     JADO also includes a sub oject called cset (jado.cset) which is useful for providing many descriptive stats such as counting frequency of
     objects or keys along with simple stats such as mean/std-dev/variance/modes etc.
@@ -73,7 +73,7 @@ Usage and Purpose:
         root[libx["exportName"]] = libx;
   }
 //end of "boilerplate" ======
-}(typeof self !== "undefined" ? self : this, function ( /* dependancies go here, eg. lib1, $, ... ,  */) {
+}(typeof self !== "undefined" ? self : this, function ( /* dependencies go here, eg. lib1, $, ... ,  */) {
 
 "use strict";
 
@@ -96,42 +96,145 @@ jado.setLogF     = function(f)   { jado.log = (_to(f)!="function") ? jado.log : 
 //also works on atomic items such as numbers, bools, etc.  
 
 
+// null and undefined stay themselves. They are not rewritten to {}.
+function _nullish(d) { return (d === null) || (typeof d === "undefined"); }
+
+function _needsSeed(name) {
+    throw new TypeError(name + " of empty or nullish value with no initial value");
+}
+
 // map takes each item and applies a function to it.
-// map(),    used internally, works on [] or {}
-jado.map       = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {r[k]=f(_v(d[k]));} else r=f(_v(d));  return r; }; 
+// Arrays and plain objects are walked. Anything else is one value, and the result stays one value.
+// A function member is passed through getValue, so it is called. The container itself is not replaced by that call.
+// null and undefined are returned as themselves and f is not called.
+jado.map       = function (d,f)     {
+    var k, r;
+    if (_nullish(d)) return d;
+    r = _ct(d);
+    if (_il(_v(d))) for (k in d) {r[k]=f(_v(d[k]));}
+    else r = f(_v(d));
+    return r;
+};
 
+// mapx(), iterator receives key and value.
+// Arrays: f(index, value). Objects: f(key, value).
+// A single value has no key, so f is called with the value only.
+jado.mapx      = function (d,f)     {
+    var k, r;
+    if (_nullish(d)) return d;
+    r = _ct(d);
+    if (_il(_v(d))) for (k in d) {r[k]=f(k,_v(d[k]));}
+    else r = f(_v(d));
+    return r;
+};
 
-// mapx(), allows iterator to work on both key and value
-// requires requires f to take 2 params: for arrays f(index,value), for  dicts f(key,value)
-jado.mapx      = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {r[k]=f(k,_v(d[k]));} else r=f(_v(d)); return r; }; 
+// forEach(), apply function to each member. Same nullish and getValue rules as map.
+jado.forEach   = function (d,f)    {
+    var k;
+    if (_nullish(d)) return;
+    if (_il(_v(d))) for (k in d) {f(k,_v(d[k]));}
+    else f(_v(d));
+};
 
-// forEach(), apply function to each memmber
-jado.forEach   = function (d,f)    {var k;  if(_il(_v(d))) for (k in d) {f(k,_v(d[k]));} else f(_v(d)); }; 
+// filter keeps members whose predicate returns true. Other truthy values do not count.
+// An accepted single value is returned as itself. A rejected single value returns undefined.
+// null and undefined are returned as themselves and f is not called.
+jado.filter    = function (d,f)     {
+    var k, r;
+    if (_nullish(d)) return d;
+    r = _ct(d);
+    if (_il(_v(d))) {
+        for (k in d) {
+            if (f(d[k]) == true) {
+                if (_to(r)=="array") r.push(d[k]);
+                else r[k]=d[k];
+            }
+        }
+    } else r = (f(d) == true) ? d : undefined;
+    return r;
+};
 
-// filter takes each item and sees whether it passes the test supplied by the passed function
-// filter, used internally, works on [] or {}
-jado.filter    = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {if (f(d[k]  ) == true) {if (_to(r)=="array") {r.push(d[k])} else {r[k]=d[k]}}} else if (f(d)==true) r=d[k]; return r;}; 
+// filterx(), predicate is f(key, value) for lists.
+// A single value has no key, so the predicate is f(undefined, value).
+jado.filterx   = function (d,f)     {
+    var k, r;
+    if (_nullish(d)) return d;
+    r = _ct(d);
+    if (_il(_v(d))) {
+        for (k in d) {
+            if (f(k,d[k]) == true) {
+                if (_to(r)=="array") r.push(d[k]);
+                else r[k]=d[k];
+            }
+        }
+    } else r = (f(undefined, d) == true) ? d : undefined;
+    return r;
+};
 
-// filterx(),  allows iterator to work on both key and value
-// requires requires f to take 2 params: for arrays f(index,value), for  dicts f(key,value)
-jado.filterx   = function (d,f)     {var k, r=_ct(d); if(_il(_v(d))) for (k in d) {if (f(k,d[k]) == true) {if (_to(r)=="array") {r.push(d[k])} else {r[k]=d[k]}}} else if (f(d)==true) r=d[k]; return r;}; 
+// reduce(), callback is f(accumulator, value), the same order as Array.prototype.reduce.
+// An empty list or a nullish input needs a seed, otherwise this throws TypeError.
+// A single value with no seed is returned as itself and f is not called.
+jado.reduce    = function (d,f,i)   {
+    var k, r=i, started=arguments.length>2;
+    if (_nullish(d)) { if (!started) _needsSeed("jado.reduce"); return i; }
+    if (_il(_v(d))) {
+        for (k in d) {
+            if (!started) { r = d[k]; started = true; }
+            else r = f(r, d[k]);
+        }
+        if (!started) _needsSeed("jado.reduce");
+    } else if (!started) r = d;
+    else r = f(r, d);
+    return r;
+};
 
-// reduce takes each item and aggregates using the supplied function and starting value
-// reduce(), used internally, works on [] or {}
-jado.reduce    = function (d,f,i)   {var k, r=i;  if(_il(_v(d))) for (k in d) {r = f(d[k],r);} else {r = f(d,r);}  return r;}; 
+// reducex(), callback is f(accumulator, value, key).
+// The accumulator stays in the first position, as in reduce. The key is third.
+// A single value has no key, so the key is undefined.
+jado.reducex   = function (d,f,i)   {
+    var k, r=i, started=arguments.length>2;
+    if (_nullish(d)) { if (!started) _needsSeed("jado.reducex"); return i; }
+    if (_il(_v(d))) {
+        for (k in d) {
+            if (!started) { r = d[k]; started = true; }
+            else r = f(r, d[k], k);
+        }
+        if (!started) _needsSeed("jado.reducex");
+    } else if (!started) r = d;
+    else r = f(r, d, undefined);
+    return r;
+};
 
-// reducex(), used internally, works on [] or {}, allows access to index or key for each element, 
-// requires requires f to take 3 params: for arrays f(index,value,aggregation), for  dicts f(key,value,aggregation)
-jado.reducex   = function (d,f,i)   {var k, r=i;  if(_il(_v(d))) for (k in d) {r = f(k,d[k],r);} else {r = f(d,r);} return r;}; 
-
-//object to array --> useful for converting dictionaries to arrays of k/v pairs --> {1:'a',2,:'2'} --> [[1,'a'],[2,'2']]
+//object to array --> useful for converting dictionaries to arrays of k/v pairs --> {1:'a',2:'2'} --> [['1','a'],['2','2']]
 //used internally for some operations
-jado.o2a       = function (d)       {return (_il(d)) ? _rx(d,function(k,v,i){i.push([k,v]); return i;},[]): [0,d]}
+jado.o2a       = function (d)       {return (_il(d)) ? _rx(d,function(i,v,k){i.push([k,v]); return i;},[]): [0,d]};
 
 // Jado internal helpers continued -- typeOf, cloneType, deepClone 
-// clones an empty type of same type as x.  only use for core types
-//jado.cloneType = function (x)       {var r = {"string":"","number":0,"object":{},"array":[], "function":function (x){return x;}, "date": new Date() }; return r[_to(x)];};
-jado.cloneType = function (x)       {return new x.constructor()};
+// empty value of the same core type as x. Not a deep clone, and not a general constructor call.
+// null and undefined are returned as themselves. Unsupported types return undefined.
+jado.cloneType = function (x)       {
+    var t, typed;
+    if ((x === null) || (typeof x === "undefined")) return x;
+    t = _to(x);
+    if (t === "array") return [];
+    if (t === "object") return {};
+    if (t === "string") return "";
+    if (t === "number") return 0;
+    if (t === "boolean") return false;
+    if (t === "date") return new Date(NaN);
+    if (t === "function") return function () {};
+    if (t === "regexp") return new RegExp();
+    // typeOf stops at the first digit, so Uint8Array comes back as "uint". Match the real tag.
+    typed = {
+        "[object Uint8Array]":1, "[object Uint8ClampedArray]":1, "[object Int8Array]":1,
+        "[object Uint16Array]":1, "[object Int16Array]":1,
+        "[object Uint32Array]":1, "[object Int32Array]":1,
+        "[object Float32Array]":1, "[object Float64Array]":1,
+        "[object BigInt64Array]":1, "[object BigUint64Array]":1
+    };
+    if (typed[Object.prototype.toString.call(x)] && (typeof x.constructor === "function")) return new x.constructor(0);
+    return undefined;
+};
 
 // returns true if x is an iterable container (e.g. array, dictionary, uintarray).  For purposes of JADO internal usage, isList(string) returns false by design.  while it
 // is technically true that strings are a list of characters, most string related tasks are not character based but pattern based (eg. regex, tokenized, parsed etc).  To treat a string
@@ -184,7 +287,7 @@ jado.len       = function (x)       {if (_il(x)==false) {return 1;} return (_to(
 //len-deep
 //return the total number of nodes in the object (recurses over all iterable items)  key-value pairs count as 1 item
 //optional second param c, if true counts intermediate nodes else only counts leaf nodes. works on all types: atomic, {},[],  strings treated as 1 regardless of length
-jado.lend      = function (x,c)     {var cc=(c==true)?1:0; var f=function(a,i){return _il(a) ? _r(a,f,i+cc) : i+1}; return f(x,0);} 
+jado.lend      = function (x,c)     {var cc=(c==true)?1:0; var f=function(a,i){return _il(a) ? _r(a,function(acc,child){return f(child,acc);},i+cc) : i+1}; return f(x,0);} 
 
 //A useable typeof operator.  See this fantastic reference: 
 //https://javascriptweblog.wordpress.com/2011/08/08/fixing-the-javascript-typeof-operator/
@@ -239,8 +342,8 @@ jado.setValue  = function (x,def)   {return (_to(x) == "undefined")? def:x;};
 
 //array to string, and string to array, sometimes useful to make string mutable, or iterable.  note that if an element of an array is a function eg [2,3,function()return{3+2}] a2s will evaluate
 //the function by default. use a2s(myArray,false) to prevent this
-jado.a2s       = function(a,e)      {return _r(a,function(v,i){ if (e!=false) return i+_v(v).toString(); return i+v.toString();},"")};
-jado.s2a       = function(s)        {return _r(s,function(v,i){ i.push(v); return i;},[])};
+jado.a2s       = function(a,e)      {return _r(a,function(i,v){ if (e!=false) return i+_v(v).toString(); return i+v.toString();},"")};
+jado.s2a       = function(s)        {return _r(s,function(i,v){ i.push(v); return i;},[])};
 
 
 //internally used syntactic sugar (short hand) but also availble for external use. Not all functions have an equivalent here
@@ -264,8 +367,8 @@ var _ch        = jado._ch = jado.choice;       //select from a dictionary or arr
 //runtime version & license info
 jado.version  = function() {
     return {
-            'version'   : "1.0.8", 
-            'about'     : "Jado is a simple library operations where any variable can be treated as an iterable.  Also includes stats for counting lists (e.g. avg var med mode etc).", 
+            'version'   : "1.1.0", 
+            'about'     : "Map, filter, and reduce for a single value, an array, or a plain object.", 
             'copy'      : "(c) M A Chatterjee.  email: deftio (at) deftio (dot) com",    
             'license'   : "BSD-2 Clause"};
 }
@@ -301,19 +404,19 @@ jado.version  = function() {
  */
 jado.cset  =  function() {
     var c = {}; // closure for counts
-    var  uniq    = function(x) {return Object.keys(_r(x,function(z,i){i[z]=1; return i;},{}));} //returns uniq keys in x
+    var  uniq    = function(x) {return Object.keys(_r(x,function(i,z){i[z]=1; return i;},{}));} //returns uniq keys in x
     //var  uniq    = function (x){return x.filter (function (v, i, arr) {return (arr.indexOf(v)==i);});};
     //these commented out versions are atomic-only and don't accept [] or {} as params
     //this.add = function(x) {c[x]=(x in c) ? c[x]+1 : 1; return c[x];} 
     //this.cnt = function(x) {return (x in c) ? c[x]:0;}                
     //this.del = function(x) {if (x in c) delete c[x]; return 0;}
     //this.dec     = function(x) {if (x in c) {c[x]-=1; if(c[x]<=0) this.del(x);} return this.cnt(x);}    
-    this.add     = function(x) {_r(x,function(z,i){i[z]=(z in i) ? i[z]+1:1; return i;},c); return cnt(x);}
+    this.add     = function(x) {_r(x,function(i,z){i[z]=(z in i) ? i[z]+1:1; return i;},c); return cnt(x);}
     this.dec     = function(x) {_m(uniq(x),function(z){if (z in c){c[z]-=1; if (c[z]<=0){delete c[z]}}}); return cnt(x)}
     this.del     = function(x) {_m(uniq(x),function(z){if (z in c) delete c[z]}); return 0;}
-    this.cnt     = function(x) {return _r(uniq(x),function(z,i){return (z in c)?c[z]+i:i},0)}; //returns count of key or keys if iteratable
+    this.cnt     = function(x) {return _r(uniq(x),function(i,z){return (z in c)?c[z]+i:i},0)}; //returns count of key or keys if iterable
     this.cntk    = function()  {return Object.keys(c).length;} //total # distinct keys stored
-    this.ttl     = function()  {return _r(c,function(x,i){i+=x; return i;},0)}; //total counts of all keys counted
+    this.ttl     = function()  {return _r(c,function(i,x){i+=x; return i;},0)}; //total counts of all keys counted
     this.all     = function()  {return c;}
     this.clr     = function()  {c={}; return cnt();}
     this.keys    = function()  {return Object.keys(c);} //just an array of the keys
@@ -323,10 +426,10 @@ jado.cset  =  function() {
     this.min     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(0,y)}
     this.max     = function(x) {var r= _o2a(c),y=_to(x)=="number"?x:1; r.sort(sf); return r.slice(r.length-y)}
     this.med     = function()  {var r= _o2a(c),l=r.length; r.sort(sf); return ((l&0x1)==1)?r[l/2-0.5]:[r[l/2-1],r[l/2]];}
-    this.vari    = function()  {var a=this.avg(); return _to(a)=="number" ?  _r(c,function(j,i){i+= (j-a)*(j-a); return i;},0)/this.cntk():a;}
+    this.vari    = function()  {var a=this.avg(); return _to(a)=="number" ?  _r(c,function(i,j){i+= (j-a)*(j-a); return i;},0)/this.cntk():a;}
     this.std     = function()  {var v = this.vari(); return (_to(v)=="number")?Math.sqrt(v):v;}
     this.clone   = function()  {var x = new jado.cset();  x.set(c); return x;} //creates duplicate
-    this.ap2o    = function(p) {return _rx(p,function(k,v,i){i[k]=v; return i;},{});} //convert array pair list to object
+    this.ap2o    = function(p) {return _rx(p,function(i,v,k){i[k]=v; return i;},{});} //copy enumerable names onto a new object
     this.type    = "jado.cset"; //static type indentifier
     this.x2o     = function() {} //converts any obj to an 
     var cnt      = this.cnt;
@@ -358,18 +461,19 @@ getkv(dataObject,function,path,results)
 //jado.getkv = function(d,f,p,r) {
 */
 jado.getkv = function(d,f,p) {
-    //var r = _v(r,[]);
-    p = (_to(p)=="undefined") ? "" : p+"/"; ////var p = _v(p,"")+'/';
-    f = _to(f) == "function" ? f : function(x){jado.log(x)}; //hack for now
-    /*return*/_rx(d,
-        function(k,v){
-            if (_il(v)) 
-                v = jado.getkv(v,f,p+k); // jado.getkv(v,f,p+k,r);            
-            //console.log(p+k,':',v);
+    var k, v;
+    p = (_to(p)=="undefined") ? "" : p+"/";
+    f = _to(f) == "function" ? f : function(x){jado.log(x)};
+    if (_il(_v(d))) {
+        for (k in d) {
+            v = d[k];
+            if (_il(v))
+                v = jado.getkv(v,f,p+k);
             f(p.toString()+k.toString()+'-->'+v);
-            return v;
         }
-        ,p);
+    } else {
+        f(p.toString()+d+'-->'+p);
+    }
     return "";
 }
 
@@ -459,10 +563,9 @@ jado.pathNorm   = function(p,delim,esc) { var t = _to(p); return _ch(t,{"array":
  jado.p2v({"this":"that","test":[1,2,3,4,[4,5]]},"test/3")   -->4
  jado.p2v({"this":"that","test":[1,2,3,4,[4,5]]},"test/5/1") -->5
  
- Note: if d is an atomic and path is "" its value is returned.
- eg
- jado.p2v(34,"")     --> 34;
- jado.p2v("this","") --> "this"
+ An empty-string path is the key "", not the root.
+ Root is an undefined path or an empty array: jado.p2v(data) and jado.p2v(data, []).
+ A missing path returns undefined. Array paths are the way to name a key that contains the delimiter.
  
  if the path doesn't resolve, then an undefined object is returned
  eg

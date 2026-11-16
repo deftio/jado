@@ -97,7 +97,7 @@ test('counting set statistics', () => {
 // Test version
 test('version function exists', () => {
     const v = jado.version();
-    assert(v.version === '1.0.7', 'Expected version 1.0.7');
+    assert(v.version === '1.1.0', 'Expected version 1.1.0');
     assert(v.license === 'BSD-2 Clause', 'Expected BSD-2 license');
 });
 
